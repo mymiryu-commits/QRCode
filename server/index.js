@@ -22,7 +22,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'qrcode-generator-secret-key-2024';
 
 // 카카오 OAuth 설정 (환경변수 또는 기본값)
 const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID || 'YOUR_KAKAO_CLIENT_ID';
-const KAKAO_REDIRECT_URI = process.env.KAKAO_REDIRECT_URI || 'https://planxsol.com/auth/kakao/callback';
+const KAKAO_REDIRECT_URI = process.env.KAKAO_REDIRECT_URI || 'https://30daysliving.com/auth/kakao/callback';
 
 // Middleware
 app.use(cors());
