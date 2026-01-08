@@ -39,7 +39,7 @@ export default function Layout({ children }) {
                 <QrCode className="w-6 h-6 text-white" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                QR Studio
+                PlanX QR
               </span>
             </Link>
 
@@ -225,7 +225,7 @@ export default function Layout({ children }) {
       <footer className="border-t border-slate-200/50 bg-white/50 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="text-center text-slate-500 text-sm">
-            <p>QR Studio - 다기능 QR코드 생성기</p>
+            <p>PlanX QR - 다기능 QR코드 생성기</p>
             <p className="mt-1">연락처, WiFi, URL 등 다양한 QR코드를 쉽고 빠르게 생성하세요</p>
           </div>
         </div>

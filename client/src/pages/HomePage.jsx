@@ -158,7 +158,7 @@ export default function HomePage() {
       <section className="bg-white rounded-3xl p-8 md:p-12 shadow-xl shadow-slate-200/50">
         <div className="text-center mb-10">
           <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3">
-            왜 QR Studio인가요?
+            왜 PlanX QR인가요?
           </h2>
           <p className="text-slate-600">
             누구나 쉽게 사용할 수 있는 강력한 기능
