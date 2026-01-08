@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import QRCode from 'qrcode';
-import * as XLSX from 'xlsx';
+import { read, utils, write } from 'xlsx';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -259,11 +259,12 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
     const { type } = req.body;
     const options = req.body.options ? JSON.parse(req.body.options) : {};
 
-    const workbook = XLSX.readFile(req.file.path);
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const workbook = read(fileBuffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     // 빈 셀도 빈 문자열로 처리
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    const rows = utils.sheet_to_json(sheet, { defval: '' });
 
     if (rows.length === 0) {
       return res.status(400).json({ error: '파일에 데이터가 없습니다.' });
@@ -530,16 +531,16 @@ app.get('/api/templates/:type', (req, res) => {
     return res.status(400).json({ error: '지원하지 않는 템플릿 타입입니다. (vcard, wifi, url, email, phone, sms 지원)' });
   }
 
-  const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = utils.book_new();
+  const worksheet = utils.json_to_sheet(data);
 
   // 컬럼 너비 자동 조정
   const colWidths = Object.keys(data[0]).map(key => ({ wch: Math.max(key.length * 2, 15) }));
   worksheet['!cols'] = colWidths;
 
-  XLSX.utils.book_append_sheet(workbook, worksheet, '데이터');
+  utils.book_append_sheet(workbook, worksheet, '데이터');
 
-  const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  const buffer = write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
   res.setHeader('Content-Disposition', `attachment; filename=qr_${type}_template.xlsx`);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
