@@ -78,6 +78,12 @@ const formatters = {
   vcard: (data) => {
     const name = getName(data);
     const phone = getPhone(data);
+
+    // 이름과 전화번호 모두 없으면 빈 문자열 반환
+    if (!name && !phone) {
+      return '';
+    }
+
     // 이름에서 성/이름 분리 시도 (한글은 첫 글자가 성)
     let firstName = '', lastName = '';
     if (name) {
@@ -128,6 +134,7 @@ const formatters = {
   },
   wifi: (data) => {
     const ssid = data.ssid || data.SSID || data.네트워크이름 || data.와이파이이름 || '';
+    if (!ssid) return '';
     const password = data.password || data.비밀번호 || '';
     const encryption = data.encryption || data.암호화 || 'WPA';
     const hidden = (data.hidden || data.숨김) ? 'true' : 'false';
@@ -135,35 +142,49 @@ const formatters = {
   },
   email: (data) => {
     const email = data.email || data.이메일 || '';
+    if (!email) return '';
     const subject = data.subject || data.제목 || '';
     const body = data.body || data.본문 || data.내용 || '';
     return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   },
   sms: (data) => {
     const phone = getPhone(data);
+    if (!phone) return '';
     const message = data.message || data.메시지 || data.내용 || '';
     return `sms:${phone}${message ? `?body=${encodeURIComponent(message)}` : ''}`;
   },
-  phone: (data) => `tel:${getPhone(data)}`,
+  phone: (data) => {
+    const phone = getPhone(data);
+    if (!phone) return '';
+    return `tel:${phone}`;
+  },
   geo: (data) => {
     const lat = data.latitude || data.위도 || '';
     const lng = data.longitude || data.경도 || '';
+    if (!lat || !lng) return '';
     return `geo:${lat},${lng}`;
   },
   event: (data) => {
-    const formatDate = (date) => {
-      if (!date) return '';
-      return new Date(date).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    };
     const title = data.title || data.제목 || data.이벤트명 || '';
     const startDate = data.startDate || data.시작일 || data.시작 || '';
+    // 제목과 시작일이 없으면 빈 문자열 반환
+    if (!title || !startDate) return '';
+
+    const formatDate = (date) => {
+      if (!date) return '';
+      try {
+        return new Date(date).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      } catch {
+        return '';
+      }
+    };
     const endDate = data.endDate || data.종료일 || data.종료 || startDate;
     const location = data.location || data.장소 || data.위치 || '';
     const description = data.description || data.설명 || data.내용 || '';
 
     const lines = ['BEGIN:VEVENT'];
-    if (title) lines.push(`SUMMARY:${title}`);
-    if (startDate) lines.push(`DTSTART:${formatDate(startDate)}`);
+    lines.push(`SUMMARY:${title}`);
+    lines.push(`DTSTART:${formatDate(startDate)}`);
     if (endDate) lines.push(`DTEND:${formatDate(endDate)}`);
     if (location) lines.push(`LOCATION:${location}`);
     if (description) lines.push(`DESCRIPTION:${description}`);
@@ -241,7 +262,8 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
     const workbook = XLSX.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(sheet);
+    // 빈 셀도 빈 문자열로 처리
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
     if (rows.length === 0) {
       return res.status(400).json({ error: '파일에 데이터가 없습니다.' });
@@ -271,30 +293,53 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
     const results = [];
     const qrCodes = [];
 
-    for (const row of rows) {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       const id = uuidv4();
-      const content = formatter(row);
-      const dataUrl = await QRCode.toDataURL(content, qrOptions);
-      // 통합된 이름 필드 지원
-      const name = getName(row) || row.ssid || row.SSID || row.네트워크이름 ||
-                   row.url || row.URL || row.제목 || `item-${id.slice(0, 8)}`;
 
-      const qrCode = {
-        id,
-        type,
-        name,
-        content,
-        data_url: dataUrl,
-        created_at: createdAt,
-        batch_id: batchId
-      };
+      try {
+        const content = formatter(row);
 
-      qrCodes.push(qrCode);
-      results.push({
-        id,
-        name,
-        dataUrl
-      });
+        // 내용이 비어있거나 유효하지 않으면 건너뛰기
+        if (!content || content.trim() === '' || content === 'tel:' || content === 'sms:' || content === 'mailto:?subject=&body=' || content === 'geo:,') {
+          console.log(`Row ${i + 1} skipped: empty content`);
+          continue;
+        }
+
+        const dataUrl = await QRCode.toDataURL(content, qrOptions);
+        // 통합된 이름 필드 지원
+        const name = getName(row) || row.ssid || row.SSID || row.네트워크이름 ||
+                    row.url || row.URL || row.제목 || `item-${id.slice(0, 8)}`;
+
+        const qrCode = {
+          id,
+          type,
+          name,
+          content,
+          data_url: dataUrl,
+          created_at: createdAt,
+          batch_id: batchId
+        };
+
+        qrCodes.push(qrCode);
+        results.push({
+          id,
+          name,
+          dataUrl
+        });
+      } catch (rowError) {
+        console.error(`Row ${i + 1} error:`, rowError.message);
+        // 개별 행 오류는 건너뛰고 계속 진행
+        continue;
+      }
+    }
+
+    // 업로드 파일 삭제
+    fs.unlinkSync(req.file.path);
+
+    // 생성된 QR이 없으면 오류
+    if (results.length === 0) {
+      return res.status(400).json({ error: '유효한 데이터가 없어 QR코드를 생성할 수 없습니다. 필수 필드를 확인해주세요.' });
     }
 
     // DB에 저장
@@ -307,9 +352,6 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
       created_at: createdAt
     });
     await db.write();
-
-    // 업로드 파일 삭제
-    fs.unlinkSync(req.file.path);
 
     res.json({
       batchId,
