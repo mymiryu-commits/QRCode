@@ -11,6 +11,7 @@ import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +19,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'qrcode-generator-secret-key-2024';
+
+// 카카오 OAuth 설정 (환경변수 또는 기본값)
+const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID || 'YOUR_KAKAO_CLIENT_ID';
+const KAKAO_REDIRECT_URI = process.env.KAKAO_REDIRECT_URI || 'http://localhost:5173/auth/kakao/callback';
 
 // Middleware
 app.use(cors());
@@ -362,6 +367,91 @@ app.post('/api/auth/login', async (req, res) => {
 // 현재 사용자 정보 조회
 app.get('/api/auth/me', authenticate, (req, res) => {
   res.json({ user: req.user });
+});
+
+// ========== 소셜 로그인 API ==========
+
+// 카카오 로그인 URL 반환
+app.get('/api/auth/kakao', (req, res) => {
+  const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code`;
+  res.json({ url: kakaoAuthUrl });
+});
+
+// 카카오 콜백 처리 (인가 코드로 토큰 교환)
+app.post('/api/auth/kakao/callback', async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ error: '인가 코드가 필요합니다.' });
+    }
+
+    // 1. 인가 코드로 액세스 토큰 받기
+    const tokenResponse = await axios.post(
+      'https://kauth.kakao.com/oauth/token',
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: KAKAO_CLIENT_ID,
+        redirect_uri: KAKAO_REDIRECT_URI,
+        code: code
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+
+    const { access_token } = tokenResponse.data;
+
+    // 2. 액세스 토큰으로 사용자 정보 받기
+    const userResponse = await axios.get('https://kapi.kakao.com/v2/user/me', {
+      headers: {
+        Authorization: `Bearer ${access_token}`
+      }
+    });
+
+    const kakaoUser = userResponse.data;
+    const kakaoId = kakaoUser.id.toString();
+    const kakaoEmail = kakaoUser.kakao_account?.email || `kakao_${kakaoId}@kakao.local`;
+    const kakaoName = kakaoUser.properties?.nickname || kakaoUser.kakao_account?.profile?.nickname || '카카오 사용자';
+
+    // 3. DB에서 사용자 찾기 또는 생성
+    await db.read();
+    let user = db.data.users.find(u => u.kakao_id === kakaoId || u.email === kakaoEmail);
+
+    if (!user) {
+      // 새 사용자 생성
+      user = {
+        id: uuidv4(),
+        email: kakaoEmail,
+        name: kakaoName,
+        role: 'user',
+        kakao_id: kakaoId,
+        provider: 'kakao',
+        created_at: new Date().toISOString()
+      };
+      db.data.users.push(user);
+      await db.write();
+    } else if (!user.kakao_id) {
+      // 기존 이메일 사용자에 카카오 연동
+      user.kakao_id = kakaoId;
+      user.provider = user.provider ? `${user.provider},kakao` : 'kakao';
+      await db.write();
+    }
+
+    // 4. JWT 토큰 발급
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({
+      message: '카카오 로그인 성공',
+      token,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+    });
+  } catch (error) {
+    console.error('카카오 로그인 오류:', error.response?.data || error.message);
+    res.status(500).json({ error: '카카오 로그인 중 오류가 발생했습니다.' });
+  }
 });
 
 // ========== QR 코드 API ==========

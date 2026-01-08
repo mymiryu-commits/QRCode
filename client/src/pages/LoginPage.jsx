@@ -2,6 +2,14 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react'
+import axios from 'axios'
+
+// 카카오 로고 SVG 컴포넌트
+const KakaoIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 3c5.799 0 10.5 3.664 10.5 8.185 0 4.52-4.701 8.184-10.5 8.184a13.5 13.5 0 0 1-1.727-.11l-4.408 2.883c-.501.265-.678.236-.472-.413l.892-3.678c-2.88-1.46-4.785-3.99-4.785-6.866C1.5 6.665 6.201 3 12 3z"/>
+  </svg>
+)
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -27,6 +35,15 @@ export default function LoginPage() {
     }
   }
 
+  const handleKakaoLogin = async () => {
+    try {
+      const response = await axios.get('/api/auth/kakao')
+      window.location.href = response.data.url
+    } catch (err) {
+      setError('카카오 로그인을 시작할 수 없습니다.')
+    }
+  }
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center">
       <div className="w-full max-w-md">
@@ -46,7 +63,28 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {/* 소셜 로그인 */}
+          <div className="mb-6">
+            <button
+              type="button"
+              onClick={handleKakaoLogin}
+              className="w-full py-3 bg-[#FEE500] text-[#191919] font-semibold rounded-lg hover:bg-[#FDD800] transition-all flex items-center justify-center gap-2"
+            >
+              <KakaoIcon />
+              카카오 로그인
+            </button>
+          </div>
+
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-gray-500">또는 이메일로 로그인</span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 이메일

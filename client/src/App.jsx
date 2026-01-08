@@ -8,6 +8,7 @@ import HistoryPage from './pages/HistoryPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import AdminPage from './pages/AdminPage'
+import KakaoCallbackPage from './pages/KakaoCallbackPage'
 
 // 로그인 필요한 페이지 보호
 function ProtectedRoute({ children }) {
@@ -68,6 +69,7 @@ function AppRoutes() {
             </PublicRoute>
           }
         />
+        <Route path="/auth/kakao/callback" element={<KakaoCallbackPage />} />
         <Route
           path="/generate"
           element={
