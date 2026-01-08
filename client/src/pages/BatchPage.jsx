@@ -5,14 +5,16 @@ import JSZip from 'jszip'
 import {
   Upload, FileSpreadsheet, Download, Loader2, Check,
   User, Wifi, Link as LinkIcon, Mail, AlertCircle,
-  Package, X, FileDown
+  Package, X, FileDown, Phone, MessageSquare, Info
 } from 'lucide-react'
 
 const batchTypes = [
-  { id: 'vcard', name: '연락처', icon: User, description: '이름, 전화번호, 이메일 등' },
-  { id: 'wifi', name: 'WiFi', icon: Wifi, description: 'SSID, 비밀번호, 암호화' },
-  { id: 'url', name: 'URL', icon: LinkIcon, description: 'URL 주소 목록' },
-  { id: 'email', name: '이메일', icon: Mail, description: '이메일 주소, 제목, 본문' },
+  { id: 'vcard', name: '연락처', icon: User, description: '이름, 전화번호만 필수', required: '이름, 전화번호', optional: '이메일, 회사, 직책, 주소, 메모' },
+  { id: 'wifi', name: 'WiFi', icon: Wifi, description: '네트워크이름, 비밀번호', required: '네트워크이름, 비밀번호', optional: '암호화(기본:WPA)' },
+  { id: 'url', name: 'URL', icon: LinkIcon, description: 'URL 주소 목록', required: '주소', optional: '이름' },
+  { id: 'email', name: '이메일', icon: Mail, description: '이메일 주소', required: '이메일', optional: '이름, 제목, 내용' },
+  { id: 'phone', name: '전화', icon: Phone, description: '전화번호', required: '전화번호', optional: '이름' },
+  { id: 'sms', name: 'SMS', icon: MessageSquare, description: '문자 메시지', required: '전화번호', optional: '이름, 내용' },
 ]
 
 export default function BatchPage() {
@@ -146,7 +148,7 @@ export default function BatchPage() {
         {/* 타입 선택 */}
         <div className="card">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">1. QR코드 유형 선택</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {batchTypes.map((type) => {
               const Icon = type.icon
               const isSelected = selectedType === type.id
@@ -168,6 +170,26 @@ export default function BatchPage() {
               )
             })}
           </div>
+
+          {/* 선택된 타입의 필드 정보 */}
+          {selectedType && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+              <div className="flex items-start gap-2">
+                <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-blue-900 mb-1">
+                    {batchTypes.find(t => t.id === selectedType)?.name} 템플릿 필드 안내
+                  </p>
+                  <p className="text-blue-700">
+                    <span className="font-medium">필수:</span> {batchTypes.find(t => t.id === selectedType)?.required}
+                  </p>
+                  <p className="text-blue-600">
+                    <span className="font-medium">선택:</span> {batchTypes.find(t => t.id === selectedType)?.optional} (빈칸 가능)
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 파일 업로드 */}
@@ -336,12 +358,18 @@ export default function BatchPage() {
             </div>
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-xs font-medium">3</span>
-              <p>템플릿에 맞게 데이터를 입력하고 파일을 업로드합니다.</p>
+              <p><strong>필수 정보만 입력하면 됩니다.</strong> 나머지 항목은 빈칸으로 두어도 됩니다.</p>
             </div>
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-xs font-medium">4</span>
               <p>"대량 QR코드 생성" 버튼을 클릭하면 자동으로 생성됩니다.</p>
             </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-slate-200">
+            <p className="text-xs text-slate-500">
+              <strong>팁:</strong> 한글 필드명(이름, 전화번호, 이메일 등)과 영문 필드명(name, phone, email 등) 모두 지원합니다.
+            </p>
           </div>
         </div>
       </div>

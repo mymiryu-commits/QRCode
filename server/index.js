@@ -56,49 +56,119 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// QR 코드 타입별 데이터 포맷터
+// 이름 필드 통합 헬퍼 (이름, name, firstName+lastName 모두 지원)
+const getName = (data) => {
+  if (data.이름) return data.이름;
+  if (data.name) return data.name;
+  if (data.firstName || data.lastName) {
+    return `${data.firstName || ''} ${data.lastName || ''}`.trim();
+  }
+  return '';
+};
+
+// 전화번호 필드 통합 헬퍼
+const getPhone = (data) => {
+  return data.전화번호 || data.phone || data.휴대폰 || data.연락처 || '';
+};
+
+// QR 코드 타입별 데이터 포맷터 (최소 정보만으로도 생성 가능)
 const formatters = {
-  url: (data) => data.url,
-  text: (data) => data.text,
+  url: (data) => data.url || data.URL || data.주소 || '',
+  text: (data) => data.text || data.텍스트 || data.내용 || '',
   vcard: (data) => {
-    return `BEGIN:VCARD
-VERSION:3.0
-N:${data.lastName || ''};${data.firstName || ''}
-FN:${data.firstName || ''} ${data.lastName || ''}
-ORG:${data.organization || ''}
-TITLE:${data.title || ''}
-TEL;TYPE=CELL:${data.phone || ''}
-TEL;TYPE=WORK:${data.workPhone || ''}
-EMAIL:${data.email || ''}
-ADR;TYPE=WORK:;;${data.address || ''}
-URL:${data.website || ''}
-NOTE:${data.note || ''}
-END:VCARD`;
+    const name = getName(data);
+    const phone = getPhone(data);
+    // 이름에서 성/이름 분리 시도 (한글은 첫 글자가 성)
+    let firstName = '', lastName = '';
+    if (name) {
+      if (data.firstName || data.lastName) {
+        firstName = data.firstName || '';
+        lastName = data.lastName || '';
+      } else if (/^[가-힣]/.test(name)) {
+        // 한글 이름: 첫 글자가 성
+        lastName = name.charAt(0);
+        firstName = name.slice(1);
+      } else {
+        // 영문 이름: 전체를 firstName으로
+        firstName = name;
+      }
+    }
+
+    const lines = ['BEGIN:VCARD', 'VERSION:3.0'];
+    if (name) {
+      lines.push(`N:${lastName};${firstName}`);
+      lines.push(`FN:${name}`);
+    }
+    if (data.organization || data.회사 || data.조직) {
+      lines.push(`ORG:${data.organization || data.회사 || data.조직}`);
+    }
+    if (data.title || data.직책 || data.직위) {
+      lines.push(`TITLE:${data.title || data.직책 || data.직위}`);
+    }
+    if (phone) {
+      lines.push(`TEL;TYPE=CELL:${phone}`);
+    }
+    if (data.workPhone || data.직장전화 || data.회사전화) {
+      lines.push(`TEL;TYPE=WORK:${data.workPhone || data.직장전화 || data.회사전화}`);
+    }
+    if (data.email || data.이메일) {
+      lines.push(`EMAIL:${data.email || data.이메일}`);
+    }
+    if (data.address || data.주소) {
+      lines.push(`ADR;TYPE=WORK:;;${data.address || data.주소}`);
+    }
+    if (data.website || data.웹사이트 || data.홈페이지) {
+      lines.push(`URL:${data.website || data.웹사이트 || data.홈페이지}`);
+    }
+    if (data.note || data.메모 || data.비고) {
+      lines.push(`NOTE:${data.note || data.메모 || data.비고}`);
+    }
+    lines.push('END:VCARD');
+    return lines.join('\n');
   },
   wifi: (data) => {
-    const encryption = data.encryption || 'WPA';
-    const hidden = data.hidden ? 'true' : 'false';
-    return `WIFI:T:${encryption};S:${data.ssid};P:${data.password};H:${hidden};;`;
+    const ssid = data.ssid || data.SSID || data.네트워크이름 || data.와이파이이름 || '';
+    const password = data.password || data.비밀번호 || '';
+    const encryption = data.encryption || data.암호화 || 'WPA';
+    const hidden = (data.hidden || data.숨김) ? 'true' : 'false';
+    return `WIFI:T:${encryption};S:${ssid};P:${password};H:${hidden};;`;
   },
   email: (data) => {
-    return `mailto:${data.email}?subject=${encodeURIComponent(data.subject || '')}&body=${encodeURIComponent(data.body || '')}`;
+    const email = data.email || data.이메일 || '';
+    const subject = data.subject || data.제목 || '';
+    const body = data.body || data.본문 || data.내용 || '';
+    return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   },
   sms: (data) => {
-    return `sms:${data.phone}${data.message ? `?body=${encodeURIComponent(data.message)}` : ''}`;
+    const phone = getPhone(data);
+    const message = data.message || data.메시지 || data.내용 || '';
+    return `sms:${phone}${message ? `?body=${encodeURIComponent(message)}` : ''}`;
   },
-  phone: (data) => `tel:${data.phone}`,
-  geo: (data) => `geo:${data.latitude},${data.longitude}`,
+  phone: (data) => `tel:${getPhone(data)}`,
+  geo: (data) => {
+    const lat = data.latitude || data.위도 || '';
+    const lng = data.longitude || data.경도 || '';
+    return `geo:${lat},${lng}`;
+  },
   event: (data) => {
     const formatDate = (date) => {
+      if (!date) return '';
       return new Date(date).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     };
-    return `BEGIN:VEVENT
-SUMMARY:${data.title || ''}
-DTSTART:${formatDate(data.startDate)}
-DTEND:${formatDate(data.endDate)}
-LOCATION:${data.location || ''}
-DESCRIPTION:${data.description || ''}
-END:VEVENT`;
+    const title = data.title || data.제목 || data.이벤트명 || '';
+    const startDate = data.startDate || data.시작일 || data.시작 || '';
+    const endDate = data.endDate || data.종료일 || data.종료 || startDate;
+    const location = data.location || data.장소 || data.위치 || '';
+    const description = data.description || data.설명 || data.내용 || '';
+
+    const lines = ['BEGIN:VEVENT'];
+    if (title) lines.push(`SUMMARY:${title}`);
+    if (startDate) lines.push(`DTSTART:${formatDate(startDate)}`);
+    if (endDate) lines.push(`DTEND:${formatDate(endDate)}`);
+    if (location) lines.push(`LOCATION:${location}`);
+    if (description) lines.push(`DESCRIPTION:${description}`);
+    lines.push('END:VEVENT');
+    return lines.join('\n');
   }
 };
 
@@ -205,7 +275,9 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
       const id = uuidv4();
       const content = formatter(row);
       const dataUrl = await QRCode.toDataURL(content, qrOptions);
-      const name = row.name || row.이름 || row.ssid || row.url || `item-${id.slice(0, 8)}`;
+      // 통합된 이름 필드 지원
+      const name = getName(row) || row.ssid || row.SSID || row.네트워크이름 ||
+                   row.url || row.URL || row.제목 || `item-${id.slice(0, 8)}`;
 
       const qrCode = {
         id,
@@ -357,40 +429,58 @@ app.get('/api/batches/:id', async (req, res) => {
   }
 });
 
-// 샘플 템플릿 다운로드
+// 샘플 템플릿 다운로드 (한글 필드명, 최소 정보만으로도 생성 가능)
 app.get('/api/templates/:type', (req, res) => {
   const { type } = req.params;
 
+  // 통합 템플릿 - 한글 필드명 지원, 필수 필드만 채우면 됨
   const templates = {
     vcard: [
-      { firstName: '홍', lastName: '길동', phone: '010-1234-5678', email: 'hong@example.com', organization: '회사명', title: '직책' },
-      { firstName: '김', lastName: '철수', phone: '010-9876-5432', email: 'kim@example.com', organization: '회사명2', title: '대리' }
+      { 이름: '홍길동', 전화번호: '010-1234-5678', 이메일: '', 회사: '', 직책: '', 주소: '', 메모: '' },
+      { 이름: '김철수', 전화번호: '010-9876-5432', 이메일: 'kim@example.com', 회사: '(주)회사', 직책: '대리', 주소: '', 메모: '' },
+      { 이름: '이영희', 전화번호: '010-5555-1234', 이메일: '', 회사: '', 직책: '', 주소: '', 메모: '친구' }
     ],
     wifi: [
-      { ssid: 'MyWiFi', password: 'password123', encryption: 'WPA' },
-      { ssid: 'GuestWiFi', password: 'guest123', encryption: 'WPA2' }
+      { 네트워크이름: 'MyWiFi', 비밀번호: 'password123', 암호화: 'WPA' },
+      { 네트워크이름: 'GuestWiFi', 비밀번호: 'guest2024', 암호화: 'WPA2' },
+      { 네트워크이름: 'Office_5G', 비밀번호: 'office#1234', 암호화: 'WPA' }
     ],
     url: [
-      { name: '네이버', url: 'https://www.naver.com' },
-      { name: '구글', url: 'https://www.google.com' }
+      { 이름: '네이버', 주소: 'https://www.naver.com' },
+      { 이름: '구글', 주소: 'https://www.google.com' },
+      { 이름: '회사 홈페이지', 주소: 'https://company.co.kr' }
     ],
     email: [
-      { name: '문의', email: 'contact@example.com', subject: '문의합니다', body: '안녕하세요' }
+      { 이름: '고객문의', 이메일: 'contact@example.com', 제목: '문의합니다', 내용: '' },
+      { 이름: '기술지원', 이메일: 'support@example.com', 제목: '기술지원 요청', 내용: '' }
+    ],
+    phone: [
+      { 이름: '대표전화', 전화번호: '02-1234-5678' },
+      { 이름: '고객센터', 전화번호: '1588-1234' }
+    ],
+    sms: [
+      { 이름: '예약문의', 전화번호: '010-1234-5678', 내용: '예약 문의드립니다.' },
+      { 이름: '주문확인', 전화번호: '010-9876-5432', 내용: '' }
     ]
   };
 
   const data = templates[type];
   if (!data) {
-    return res.status(400).json({ error: '지원하지 않는 템플릿 타입입니다.' });
+    return res.status(400).json({ error: '지원하지 않는 템플릿 타입입니다. (vcard, wifi, url, email, phone, sms 지원)' });
   }
 
   const workbook = XLSX.utils.book_new();
   const worksheet = XLSX.utils.json_to_sheet(data);
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Template');
+
+  // 컬럼 너비 자동 조정
+  const colWidths = Object.keys(data[0]).map(key => ({ wch: Math.max(key.length * 2, 15) }));
+  worksheet['!cols'] = colWidths;
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, '데이터');
 
   const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-  res.setHeader('Content-Disposition', `attachment; filename=${type}_template.xlsx`);
+  res.setHeader('Content-Disposition', `attachment; filename=qr_${type}_template.xlsx`);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.send(buffer);
 });
