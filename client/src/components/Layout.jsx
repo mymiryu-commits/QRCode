@@ -227,6 +227,11 @@ export default function Layout({ children }) {
           <div className="text-center text-slate-500 text-sm">
             <p>PlanX QR - 다기능 QR코드 생성기</p>
             <p className="mt-1">연락처, WiFi, URL 등 다양한 QR코드를 쉽고 빠르게 생성하세요</p>
+            <p className="mt-3 text-slate-400">
+              고객센터: <a href="tel:1588-5617" className="hover:text-primary-500">1588-5617</a>
+              <span className="mx-2">|</span>
+              <a href="mailto:mymiryu@gmail.com" className="hover:text-primary-500">mymiryu@gmail.com</a>
+            </p>
           </div>
         </div>
       </footer>
