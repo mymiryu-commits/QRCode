@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { QrCode, Home, PlusCircle, Upload, History, Menu, X, LogIn, LogOut, User, Shield } from 'lucide-react'
+import { QrCode, Home, PlusCircle, Upload, History, Menu, X, LogIn, LogOut, User, Shield, CreditCard } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -8,6 +8,7 @@ const navigation = [
   { name: 'QR 생성', href: '/generate', icon: PlusCircle, requiresAuth: true },
   { name: '대량 생성', href: '/batch', icon: Upload, requiresAuth: true },
   { name: '히스토리', href: '/history', icon: History, requiresAuth: true },
+  { name: '요금제', href: '/pricing', icon: CreditCard, requiresAuth: false },
 ]
 
 export default function Layout({ children }) {

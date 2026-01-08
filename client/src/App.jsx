@@ -9,6 +9,9 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import AdminPage from './pages/AdminPage'
 import KakaoCallbackPage from './pages/KakaoCallbackPage'
+import PricingPage from './pages/PricingPage'
+import PaymentSuccessPage from './pages/PaymentSuccessPage'
+import PaymentFailPage from './pages/PaymentFailPage'
 
 // 로그인 필요한 페이지 보호
 function ProtectedRoute({ children }) {
@@ -99,6 +102,23 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <AdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route
+          path="/payment/success"
+          element={
+            <ProtectedRoute>
+              <PaymentSuccessPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payment/fail"
+          element={
+            <ProtectedRoute>
+              <PaymentFailPage />
             </ProtectedRoute>
           }
         />
