@@ -17,7 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'qrcode-generator-secret-key-2024';
 
 // 카카오 OAuth 설정 (환경변수 또는 기본값)
@@ -991,6 +991,19 @@ app.get('/api/admin/stats', authenticate, requireAdmin, async (req, res) => {
     res.status(500).json({ error: '통계 조회 중 오류가 발생했습니다.' });
   }
 });
+
+// 프로덕션에서 React 빌드 파일 서빙
+const clientDistPath = path.join(__dirname, '../client/dist');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+
+  // API 라우트가 아닌 모든 요청을 React 앱으로 라우팅
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api/') && !req.path.startsWith('/uploads/')) {
+      res.sendFile(path.join(clientDistPath, 'index.html'));
+    }
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`🚀 QR 코드 생성기 서버가 http://localhost:${PORT} 에서 실행 중입니다.`);
