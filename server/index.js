@@ -9,12 +9,15 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3001;
+const JWT_SECRET = process.env.JWT_SECRET || 'qrcode-generator-secret-key-2024';
 
 // Middleware
 app.use(cors());
@@ -28,6 +31,7 @@ if (!fs.existsSync(dataDir)) {
 }
 
 const defaultData = {
+  users: [],
   qr_codes: [],
   batch_jobs: []
 };
@@ -38,7 +42,77 @@ const db = new Low(adapter, defaultData);
 // DB 초기화
 await db.read();
 db.data ||= defaultData;
+// users 배열이 없으면 추가
+if (!db.data.users) {
+  db.data.users = [];
+}
 await db.write();
+
+// 기본 관리자 계정 생성 (없으면)
+await db.read();
+const adminExists = db.data.users.find(u => u.role === 'admin');
+if (!adminExists) {
+  const hashedPassword = await bcrypt.hash('admin1234', 10);
+  db.data.users.push({
+    id: uuidv4(),
+    email: 'admin@qrcode.com',
+    password: hashedPassword,
+    name: '관리자',
+    role: 'admin',
+    created_at: new Date().toISOString()
+  });
+  await db.write();
+  console.log('기본 관리자 계정 생성: admin@qrcode.com / admin1234');
+}
+
+// 인증 미들웨어
+const authenticate = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: '로그인이 필요합니다.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    await db.read();
+    const user = db.data.users.find(u => u.id === decoded.userId);
+    if (!user) {
+      return res.status(401).json({ error: '유효하지 않은 사용자입니다.' });
+    }
+    req.user = { id: user.id, email: user.email, name: user.name, role: user.role };
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: '토큰이 만료되었거나 유효하지 않습니다.' });
+  }
+};
+
+// 관리자 권한 확인 미들웨어
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: '관리자 권한이 필요합니다.' });
+  }
+  next();
+};
+
+// 선택적 인증 미들웨어 (로그인 안해도 됨, 했으면 사용자 정보 추가)
+const optionalAuth = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      await db.read();
+      const user = db.data.users.find(u => u.id === decoded.userId);
+      if (user) {
+        req.user = { id: user.id, email: user.email, name: user.name, role: user.role };
+      }
+    } catch (error) {
+      // 토큰이 유효하지 않아도 계속 진행
+    }
+  }
+  next();
+};
 
 // Multer 설정
 const storage = multer.diskStorage({
@@ -205,8 +279,95 @@ const formatters = {
   }
 };
 
-// QR 코드 생성 API
-app.post('/api/qr/generate', async (req, res) => {
+// ========== 인증 API ==========
+
+// 회원가입
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: '이메일, 비밀번호, 이름을 모두 입력해주세요.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: '비밀번호는 6자 이상이어야 합니다.' });
+    }
+
+    await db.read();
+    const existingUser = db.data.users.find(u => u.email === email);
+    if (existingUser) {
+      return res.status(400).json({ error: '이미 등록된 이메일입니다.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = {
+      id: uuidv4(),
+      email,
+      password: hashedPassword,
+      name,
+      role: 'user',
+      created_at: new Date().toISOString()
+    };
+
+    db.data.users.push(user);
+    await db.write();
+
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({
+      message: '회원가입이 완료되었습니다.',
+      token,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+    });
+  } catch (error) {
+    console.error('회원가입 오류:', error);
+    res.status(500).json({ error: '회원가입 중 오류가 발생했습니다.' });
+  }
+});
+
+// 로그인
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: '이메일과 비밀번호를 입력해주세요.' });
+    }
+
+    await db.read();
+    const user = db.data.users.find(u => u.email === email);
+    if (!user) {
+      return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+    }
+
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({
+      message: '로그인 성공',
+      token,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+    });
+  } catch (error) {
+    console.error('로그인 오류:', error);
+    res.status(500).json({ error: '로그인 중 오류가 발생했습니다.' });
+  }
+});
+
+// 현재 사용자 정보 조회
+app.get('/api/auth/me', authenticate, (req, res) => {
+  res.json({ user: req.user });
+});
+
+// ========== QR 코드 API ==========
+
+// QR 코드 생성 API (로그인 필수)
+app.post('/api/qr/generate', authenticate, async (req, res) => {
   try {
     const { type, data, name, options = {} } = req.body;
 
@@ -233,14 +394,15 @@ app.post('/api/qr/generate', async (req, res) => {
     const dataUrl = await QRCode.toDataURL(content, qrOptions);
     const createdAt = new Date().toISOString();
 
-    // DB에 저장
+    // DB에 저장 (사용자 ID 포함)
     const qrCode = {
       id,
       type,
       name: name || `${type}-${Date.now()}`,
       content,
       data_url: dataUrl,
-      created_at: createdAt
+      created_at: createdAt,
+      user_id: req.user.id
     };
 
     await db.read();
@@ -261,8 +423,8 @@ app.post('/api/qr/generate', async (req, res) => {
   }
 });
 
-// 대량 QR 생성 (엑셀/CSV 업로드)
-app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
+// 대량 QR 생성 (엑셀/CSV 업로드, 로그인 필수)
+app.post('/api/qr/batch', authenticate, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: '파일이 업로드되지 않았습니다.' });
@@ -331,7 +493,8 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
           content,
           data_url: dataUrl,
           created_at: createdAt,
-          batch_id: batchId
+          batch_id: batchId,
+          user_id: req.user.id
         };
 
         qrCodes.push(qrCode);
@@ -375,7 +538,8 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
       id: batchId,
       name: batchName,
       total_count: results.length,
-      created_at: createdAt
+      created_at: createdAt,
+      user_id: req.user.id
     });
     await db.write();
 
@@ -397,14 +561,17 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
   }
 });
 
-// QR 코드 히스토리 조회
-app.get('/api/qr/history', async (req, res) => {
+// QR 코드 히스토리 조회 (로그인 필수, 본인 것만 조회)
+app.get('/api/qr/history', authenticate, async (req, res) => {
   try {
     const { page = 1, limit = 20, type } = req.query;
     const offset = (page - 1) * limit;
 
     await db.read();
-    let items = [...db.data.qr_codes];
+    // 관리자는 전체 조회, 일반 사용자는 본인 것만
+    let items = req.user.role === 'admin'
+      ? [...db.data.qr_codes]
+      : db.data.qr_codes.filter(qr => qr.user_id === req.user.id);
 
     if (type) {
       items = items.filter(qr => qr.type === type);
@@ -431,8 +598,8 @@ app.get('/api/qr/history', async (req, res) => {
   }
 });
 
-// 단일 QR 코드 조회
-app.get('/api/qr/:id', async (req, res) => {
+// 단일 QR 코드 조회 (로그인 필수, 본인 것만)
+app.get('/api/qr/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     await db.read();
@@ -442,6 +609,11 @@ app.get('/api/qr/:id', async (req, res) => {
       return res.status(404).json({ error: 'QR 코드를 찾을 수 없습니다.' });
     }
 
+    // 본인 것이거나 관리자만 조회 가능
+    if (qr.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: '접근 권한이 없습니다.' });
+    }
+
     res.json(qr);
   } catch (error) {
     console.error('QR 조회 오류:', error);
@@ -449,8 +621,8 @@ app.get('/api/qr/:id', async (req, res) => {
   }
 });
 
-// QR 코드 삭제
-app.delete('/api/qr/:id', async (req, res) => {
+// QR 코드 삭제 (로그인 필수, 본인 것만)
+app.delete('/api/qr/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     await db.read();
@@ -458,6 +630,12 @@ app.delete('/api/qr/:id', async (req, res) => {
     const index = db.data.qr_codes.findIndex(q => q.id === id);
     if (index === -1) {
       return res.status(404).json({ error: 'QR 코드를 찾을 수 없습니다.' });
+    }
+
+    const qr = db.data.qr_codes[index];
+    // 본인 것이거나 관리자만 삭제 가능
+    if (qr.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: '삭제 권한이 없습니다.' });
     }
 
     db.data.qr_codes.splice(index, 1);
@@ -470,13 +648,16 @@ app.delete('/api/qr/:id', async (req, res) => {
   }
 });
 
-// 배치 작업 목록 조회
-app.get('/api/batches', async (req, res) => {
+// 배치 작업 목록 조회 (로그인 필수, 본인 것만)
+app.get('/api/batches', authenticate, async (req, res) => {
   try {
     await db.read();
-    const batches = [...db.data.batch_jobs].sort(
-      (a, b) => new Date(b.created_at) - new Date(a.created_at)
-    );
+    // 관리자는 전체, 일반 사용자는 본인 것만
+    let batches = req.user.role === 'admin'
+      ? [...db.data.batch_jobs]
+      : db.data.batch_jobs.filter(b => b.user_id === req.user.id);
+
+    batches.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     res.json(batches);
   } catch (error) {
     console.error('배치 목록 조회 오류:', error);
@@ -484,8 +665,8 @@ app.get('/api/batches', async (req, res) => {
   }
 });
 
-// 배치 작업 상세 조회
-app.get('/api/batches/:id', async (req, res) => {
+// 배치 작업 상세 조회 (로그인 필수, 본인 것만)
+app.get('/api/batches/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     await db.read();
@@ -493,6 +674,11 @@ app.get('/api/batches/:id', async (req, res) => {
     const batch = db.data.batch_jobs.find(b => b.id === id);
     if (!batch) {
       return res.status(404).json({ error: '배치 작업을 찾을 수 없습니다.' });
+    }
+
+    // 본인 것이거나 관리자만 조회 가능
+    if (batch.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: '접근 권한이 없습니다.' });
     }
 
     const items = db.data.qr_codes.filter(qr => qr.batch_id === id);
@@ -559,12 +745,20 @@ app.get('/api/templates/:type', (req, res) => {
   res.send(buffer);
 });
 
-// 통계 API
-app.get('/api/stats', async (req, res) => {
+// 통계 API (로그인 필수, 본인 것만)
+app.get('/api/stats', authenticate, async (req, res) => {
   try {
     await db.read();
 
-    const qrCodes = db.data.qr_codes;
+    // 관리자는 전체, 일반 사용자는 본인 것만
+    const qrCodes = req.user.role === 'admin'
+      ? db.data.qr_codes
+      : db.data.qr_codes.filter(qr => qr.user_id === req.user.id);
+
+    const batchJobs = req.user.role === 'admin'
+      ? db.data.batch_jobs
+      : db.data.batch_jobs.filter(b => b.user_id === req.user.id);
+
     const totalQRs = qrCodes.length;
 
     // 타입별 통계
@@ -583,7 +777,7 @@ app.get('/api/stats', async (req, res) => {
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 5);
 
-    const totalBatches = db.data.batch_jobs.length;
+    const totalBatches = batchJobs.length;
 
     res.json({
       totalQRs,
@@ -593,6 +787,117 @@ app.get('/api/stats', async (req, res) => {
     });
   } catch (error) {
     console.error('통계 조회 오류:', error);
+    res.status(500).json({ error: '통계 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// ========== 관리자 전용 API ==========
+
+// 전체 사용자 목록 조회 (관리자 전용)
+app.get('/api/admin/users', authenticate, requireAdmin, async (req, res) => {
+  try {
+    await db.read();
+    const users = db.data.users.map(u => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      created_at: u.created_at
+    }));
+    res.json(users);
+  } catch (error) {
+    console.error('사용자 목록 조회 오류:', error);
+    res.status(500).json({ error: '사용자 목록 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 사용자 역할 변경 (관리자 전용)
+app.patch('/api/admin/users/:id/role', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!['user', 'admin'].includes(role)) {
+      return res.status(400).json({ error: '유효하지 않은 역할입니다.' });
+    }
+
+    await db.read();
+    const user = db.data.users.find(u => u.id === id);
+    if (!user) {
+      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    }
+
+    user.role = role;
+    await db.write();
+
+    res.json({ message: '역할이 변경되었습니다.', user: { id: user.id, email: user.email, name: user.name, role: user.role } });
+  } catch (error) {
+    console.error('역할 변경 오류:', error);
+    res.status(500).json({ error: '역할 변경 중 오류가 발생했습니다.' });
+  }
+});
+
+// 사용자 삭제 (관리자 전용)
+app.delete('/api/admin/users/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (id === req.user.id) {
+      return res.status(400).json({ error: '자기 자신은 삭제할 수 없습니다.' });
+    }
+
+    await db.read();
+    const index = db.data.users.findIndex(u => u.id === id);
+    if (index === -1) {
+      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    }
+
+    // 사용자의 QR코드도 함께 삭제
+    db.data.qr_codes = db.data.qr_codes.filter(qr => qr.user_id !== id);
+    db.data.batch_jobs = db.data.batch_jobs.filter(b => b.user_id !== id);
+    db.data.users.splice(index, 1);
+    await db.write();
+
+    res.json({ success: true, message: '사용자가 삭제되었습니다.' });
+  } catch (error) {
+    console.error('사용자 삭제 오류:', error);
+    res.status(500).json({ error: '사용자 삭제 중 오류가 발생했습니다.' });
+  }
+});
+
+// 전체 통계 (관리자 전용)
+app.get('/api/admin/stats', authenticate, requireAdmin, async (req, res) => {
+  try {
+    await db.read();
+
+    const totalUsers = db.data.users.length;
+    const totalQRs = db.data.qr_codes.length;
+    const totalBatches = db.data.batch_jobs.length;
+
+    // 사용자별 QR 생성 통계
+    const userStats = {};
+    db.data.qr_codes.forEach(qr => {
+      userStats[qr.user_id] = (userStats[qr.user_id] || 0) + 1;
+    });
+
+    const userStatsArray = Object.entries(userStats).map(([userId, count]) => {
+      const user = db.data.users.find(u => u.id === userId);
+      return {
+        userId,
+        userName: user ? user.name : '알 수 없음',
+        userEmail: user ? user.email : '알 수 없음',
+        count
+      };
+    }).sort((a, b) => b.count - a.count);
+
+    res.json({
+      totalUsers,
+      totalQRs,
+      totalBatches,
+      userStats: userStatsArray
+    });
+  } catch (error) {
+    console.error('관리자 통계 조회 오류:', error);
     res.status(500).json({ error: '통계 조회 중 오류가 발생했습니다.' });
   }
 });
