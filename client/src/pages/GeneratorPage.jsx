@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import axios from 'axios'
 import { saveAs } from 'file-saver'
 import {
   QrCode, User, Wifi, Link as LinkIcon, Mail, Phone,
   MessageSquare, MapPin, Calendar, FileText, Download,
-  Check, Loader2, Settings, RefreshCw
+  Check, Loader2, Settings, RefreshCw, Image, X, Crown
 } from 'lucide-react'
 
 const qrTypes = [
@@ -52,6 +52,29 @@ export default function GeneratorPage() {
   const [generatedQR, setGeneratedQR] = useState(null)
   const [loading, setLoading] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
+  const [logoFile, setLogoFile] = useState(null)
+  const [logoPreview, setLogoPreview] = useState(null)
+  const logoInputRef = useRef(null)
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('로고 파일은 2MB 이하여야 합니다.')
+        return
+      }
+      setLogoFile(file)
+      const reader = new FileReader()
+      reader.onload = (e) => setLogoPreview(e.target.result)
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const removeLogo = () => {
+    setLogoFile(null)
+    setLogoPreview(null)
+    if (logoInputRef.current) logoInputRef.current.value = ''
+  }
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -129,16 +152,39 @@ export default function GeneratorPage() {
   const generateQR = async () => {
     setLoading(true)
     try {
-      const response = await axios.post('/api/qr/generate', {
-        type: selectedType,
-        data: prepareData(),
-        name: formData.firstName || formData.ssid || formData.url || formData.eventTitle || 'QR Code',
-        options: qrOptions
-      })
+      let response
+
+      if (logoFile) {
+        // 로고가 있으면 FormData로 전송
+        const formDataObj = new FormData()
+        formDataObj.append('logo', logoFile)
+        formDataObj.append('type', selectedType)
+        formDataObj.append('data', JSON.stringify(prepareData()))
+        formDataObj.append('name', formData.firstName || formData.ssid || formData.url || formData.eventTitle || 'QR Code')
+        formDataObj.append('options', JSON.stringify(qrOptions))
+
+        response = await axios.post('/api/qr/with-logo', formDataObj, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+      } else {
+        // 로고 없이 일반 생성
+        response = await axios.post('/api/qr/generate', {
+          type: selectedType,
+          data: prepareData(),
+          name: formData.firstName || formData.ssid || formData.url || formData.eventTitle || 'QR Code',
+          options: qrOptions
+        })
+      }
+
       setGeneratedQR(response.data)
     } catch (error) {
       console.error('QR 생성 오류:', error)
-      alert('QR 코드 생성 중 오류가 발생했습니다.')
+      const errorMsg = error.response?.data?.error || 'QR 코드 생성 중 오류가 발생했습니다.'
+      if (error.response?.status === 403 && error.response?.data?.requiredPlan) {
+        alert(`로고 삽입 기능은 ${error.response.data.requiredPlan === 'pro' ? '프로' : '프리미엄'} 플랜 이상에서 사용 가능합니다.`)
+      } else {
+        alert(errorMsg)
+      }
     } finally {
       setLoading(false)
     }
@@ -163,6 +209,7 @@ export default function GeneratorPage() {
   const resetForm = () => {
     setFormData(initialFormData)
     setGeneratedQR(null)
+    removeLogo()
   }
 
   const renderForm = () => {
@@ -660,6 +707,58 @@ export default function GeneratorPage() {
                     <option value="Q">높음 (Q) - 25%</option>
                     <option value="H">최고 (H) - 30%</option>
                   </select>
+                </div>
+
+                {/* 로고 삽입 (프로 플랜 이상) */}
+                <div className="border-t border-slate-200 pt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <label className="block text-xs font-medium text-slate-600">로고 삽입</label>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">
+                      <Crown className="w-3 h-3" />
+                      PRO
+                    </span>
+                  </div>
+
+                  {logoPreview ? (
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <img
+                          src={logoPreview}
+                          alt="로고 미리보기"
+                          className="w-16 h-16 object-contain rounded-lg border border-slate-200 bg-white"
+                        />
+                        <button
+                          onClick={removeLogo}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="text-sm text-slate-600">
+                        <p className="font-medium">{logoFile?.name}</p>
+                        <p className="text-xs text-slate-400">{(logoFile?.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/svg+xml"
+                        onChange={handleLogoChange}
+                        className="hidden"
+                        id="logo-upload"
+                      />
+                      <label
+                        htmlFor="logo-upload"
+                        className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors"
+                      >
+                        <Image className="w-5 h-5 text-slate-400" />
+                        <span className="text-sm text-slate-500">로고 이미지 선택 (PNG, JPG, SVG)</span>
+                      </label>
+                      <p className="text-xs text-slate-400 mt-1">최대 2MB, QR 중앙에 표시됩니다</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

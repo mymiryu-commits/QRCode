@@ -12,6 +12,7 @@ import { JSONFile } from 'lowdb/node';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
+import sharp from 'sharp';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1509,6 +1510,222 @@ app.post('/api/qr/high-resolution', authenticate, checkPremiumFeature('high_reso
   } catch (error) {
     console.error('고화질 QR 생성 오류:', error);
     res.status(500).json({ error: '고화질 QR 생성 중 오류가 발생했습니다.' });
+  }
+});
+
+// ========== 로고 삽입 QR API ==========
+
+// 로고 업로드용 multer 설정
+const logoStorage = multer.memoryStorage();
+const logoUpload = multer({
+  storage: logoStorage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB 제한
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('PNG, JPG, SVG 이미지만 업로드 가능합니다.'));
+    }
+  }
+});
+
+// 로고 삽입 QR 생성 (프로 플랜 이상)
+app.post('/api/qr/with-logo', authenticate, checkPremiumFeature('logo_insert'), logoUpload.single('logo'), async (req, res) => {
+  try {
+    const { type, data, name, options = {} } = req.body;
+    const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+    const parsedOptions = typeof options === 'string' ? JSON.parse(options) : options;
+
+    if (!req.file) {
+      return res.status(400).json({ error: '로고 이미지를 업로드해주세요.' });
+    }
+
+    const formatter = formatters[type];
+    if (!formatter) {
+      return res.status(400).json({ error: '지원하지 않는 QR 코드 타입입니다.' });
+    }
+
+    const content = formatter(parsedData);
+    if (!content) {
+      return res.status(400).json({ error: 'QR 코드 데이터가 올바르지 않습니다.' });
+    }
+
+    const plan = await getUserSubscription(req.user.id);
+    const maxSize = PLANS[plan].maxSize;
+    const qrSize = Math.min(parsedOptions.size || 500, maxSize);
+
+    // 로고 삽입 시 오류 정정 레벨을 H(30%)로 설정해야 함
+    const qrOptions = {
+      errorCorrectionLevel: 'H',
+      type: 'image/png',
+      quality: 1,
+      margin: parsedOptions.margin || 2,
+      color: {
+        dark: parsedOptions.darkColor || '#000000',
+        light: parsedOptions.lightColor || '#FFFFFF'
+      },
+      width: qrSize
+    };
+
+    // QR 코드 생성 (Buffer로)
+    const qrBuffer = await QRCode.toBuffer(content, qrOptions);
+
+    // 로고 크기 계산 (QR의 20-25% 정도가 적당)
+    const logoSize = Math.round(qrSize * 0.22);
+    const logoPosition = Math.round((qrSize - logoSize) / 2);
+
+    // 로고 이미지 리사이즈
+    const resizedLogo = await sharp(req.file.buffer)
+      .resize(logoSize, logoSize, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+      .png()
+      .toBuffer();
+
+    // 로고 배경 (흰색 원형/사각형)
+    const logoPadding = Math.round(logoSize * 0.1);
+    const logoWithBg = await sharp({
+      create: {
+        width: logoSize + logoPadding * 2,
+        height: logoSize + logoPadding * 2,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      }
+    })
+      .composite([{
+        input: resizedLogo,
+        top: logoPadding,
+        left: logoPadding
+      }])
+      .png()
+      .toBuffer();
+
+    // QR 코드 위에 로고 합성
+    const finalQR = await sharp(qrBuffer)
+      .composite([{
+        input: logoWithBg,
+        top: logoPosition - logoPadding,
+        left: logoPosition - logoPadding
+      }])
+      .png()
+      .toBuffer();
+
+    // Base64 Data URL로 변환
+    const dataUrl = `data:image/png;base64,${finalQR.toString('base64')}`;
+
+    const id = uuidv4();
+    const createdAt = new Date().toISOString();
+
+    // DB에 저장
+    const qrCode = {
+      id,
+      type,
+      name: name || `${type}-logo-${Date.now()}`,
+      content,
+      data_url: dataUrl,
+      has_logo: true,
+      created_at: createdAt,
+      user_id: req.user.id
+    };
+
+    await db.read();
+    db.data.qr_codes.push(qrCode);
+    await db.write();
+
+    res.json({
+      id,
+      type,
+      name: qrCode.name,
+      content,
+      dataUrl,
+      hasLogo: true,
+      createdAt
+    });
+  } catch (error) {
+    console.error('로고 QR 생성 오류:', error);
+    res.status(500).json({ error: '로고 QR 생성 중 오류가 발생했습니다: ' + error.message });
+  }
+});
+
+// 기존 QR에 로고 추가 (프로 플랜 이상)
+app.post('/api/qr/:id/add-logo', authenticate, checkPremiumFeature('logo_insert'), logoUpload.single('logo'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ error: '로고 이미지를 업로드해주세요.' });
+    }
+
+    await db.read();
+    const qr = db.data.qr_codes.find(q => q.id === id && q.user_id === req.user.id);
+
+    if (!qr) {
+      return res.status(404).json({ error: 'QR 코드를 찾을 수 없습니다.' });
+    }
+
+    const plan = await getUserSubscription(req.user.id);
+    const maxSize = PLANS[plan].maxSize;
+    const qrSize = Math.min(parseInt(req.body.size) || 500, maxSize);
+
+    // QR 코드 재생성 (높은 오류 정정 레벨로)
+    const qrOptions = {
+      errorCorrectionLevel: 'H',
+      type: 'image/png',
+      quality: 1,
+      margin: 2,
+      width: qrSize
+    };
+
+    const qrBuffer = await QRCode.toBuffer(qr.content, qrOptions);
+
+    // 로고 크기 및 위치 계산
+    const logoSize = Math.round(qrSize * 0.22);
+    const logoPosition = Math.round((qrSize - logoSize) / 2);
+
+    // 로고 이미지 처리
+    const resizedLogo = await sharp(req.file.buffer)
+      .resize(logoSize, logoSize, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+      .png()
+      .toBuffer();
+
+    // 로고 배경
+    const logoPadding = Math.round(logoSize * 0.1);
+    const logoWithBg = await sharp({
+      create: {
+        width: logoSize + logoPadding * 2,
+        height: logoSize + logoPadding * 2,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      }
+    })
+      .composite([{
+        input: resizedLogo,
+        top: logoPadding,
+        left: logoPadding
+      }])
+      .png()
+      .toBuffer();
+
+    // 합성
+    const finalQR = await sharp(qrBuffer)
+      .composite([{
+        input: logoWithBg,
+        top: logoPosition - logoPadding,
+        left: logoPosition - logoPadding
+      }])
+      .png()
+      .toBuffer();
+
+    const dataUrl = `data:image/png;base64,${finalQR.toString('base64')}`;
+
+    res.json({
+      id: qr.id,
+      dataUrl,
+      size: qrSize,
+      hasLogo: true
+    });
+  } catch (error) {
+    console.error('로고 추가 오류:', error);
+    res.status(500).json({ error: '로고 추가 중 오류가 발생했습니다: ' + error.message });
   }
 });
 
