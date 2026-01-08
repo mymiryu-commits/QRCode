@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 
 const batchTypes = [
-  { id: 'vcard', name: '연락처', icon: User, description: '이름, 전화번호만 필수', required: '이름, 전화번호', optional: '이메일, 회사, 직책, 주소, 메모, 접미사, 그룹' },
+  { id: 'vcard', name: '연락처', icon: User, description: '이름, 전화번호만 필수', required: '이름, 전화번호', optional: '이메일, 회사, 직책, 주소, 메모, 접미사' },
   { id: 'wifi', name: 'WiFi', icon: Wifi, description: '네트워크이름, 비밀번호', required: '네트워크이름, 비밀번호', optional: '암호화(기본:WPA)' },
   { id: 'url', name: 'URL', icon: LinkIcon, description: 'URL 주소 목록', required: '주소', optional: '이름' },
   { id: 'email', name: '이메일', icon: Mail, description: '이메일 주소', required: '이메일', optional: '이름, 제목, 내용' },
