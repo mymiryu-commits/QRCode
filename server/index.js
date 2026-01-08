@@ -22,6 +22,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'qrcode-generator-secret-key-2024';
 
 // 카카오 OAuth 설정 (환경변수 또는 기본값)
 const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID || 'YOUR_KAKAO_CLIENT_ID';
+const KAKAO_CLIENT_SECRET = process.env.KAKAO_CLIENT_SECRET || '';
 const KAKAO_REDIRECT_URI = process.env.KAKAO_REDIRECT_URI || 'https://30daysliving.com/auth/kakao/callback';
 
 // Middleware
@@ -387,14 +388,21 @@ app.post('/api/auth/kakao/callback', async (req, res) => {
     }
 
     // 1. 인가 코드로 액세스 토큰 받기
+    const tokenParams = {
+      grant_type: 'authorization_code',
+      client_id: KAKAO_CLIENT_ID,
+      redirect_uri: KAKAO_REDIRECT_URI,
+      code: code
+    };
+
+    // client_secret이 설정된 경우 추가
+    if (KAKAO_CLIENT_SECRET) {
+      tokenParams.client_secret = KAKAO_CLIENT_SECRET;
+    }
+
     const tokenResponse = await axios.post(
       'https://kauth.kakao.com/oauth/token',
-      new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: KAKAO_CLIENT_ID,
-        redirect_uri: KAKAO_REDIRECT_URI,
-        code: code
-      }),
+      new URLSearchParams(tokenParams),
       {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
