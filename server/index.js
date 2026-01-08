@@ -4,10 +4,11 @@ import multer from 'multer';
 import QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
 import { v4 as uuidv4 } from 'uuid';
-import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { Low } from 'lowdb';
+import { JSONFile } from 'lowdb/node';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,41 +21,24 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Database 설정
-const dbPath = path.join(__dirname, '../data/qrcodes.db');
-const dataDir = path.dirname(dbPath);
+// Database 설정 (LowDB - JSON 파일 기반)
+const dataDir = path.join(__dirname, '../data');
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-const db = new Database(dbPath);
+const defaultData = {
+  qr_codes: [],
+  batch_jobs: []
+};
 
-// 테이블 생성
-db.exec(`
-  CREATE TABLE IF NOT EXISTS qr_codes (
-    id TEXT PRIMARY KEY,
-    type TEXT NOT NULL,
-    name TEXT,
-    content TEXT NOT NULL,
-    data_url TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+const adapter = new JSONFile(path.join(dataDir, 'db.json'));
+const db = new Low(adapter, defaultData);
 
-  CREATE TABLE IF NOT EXISTS batch_jobs (
-    id TEXT PRIMARY KEY,
-    name TEXT,
-    total_count INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS batch_items (
-    id TEXT PRIMARY KEY,
-    batch_id TEXT,
-    qr_id TEXT,
-    FOREIGN KEY (batch_id) REFERENCES batch_jobs(id),
-    FOREIGN KEY (qr_id) REFERENCES qr_codes(id)
-  );
-`);
+// DB 초기화
+await db.read();
+db.data ||= defaultData;
+await db.write();
 
 // Multer 설정
 const storage = multer.diskStorage({
@@ -74,13 +58,8 @@ const upload = multer({ storage });
 
 // QR 코드 타입별 데이터 포맷터
 const formatters = {
-  // 일반 URL
   url: (data) => data.url,
-
-  // 일반 텍스트
   text: (data) => data.text,
-
-  // vCard (연락처)
   vcard: (data) => {
     return `BEGIN:VCARD
 VERSION:3.0
@@ -96,31 +75,19 @@ URL:${data.website || ''}
 NOTE:${data.note || ''}
 END:VCARD`;
   },
-
-  // WiFi
   wifi: (data) => {
     const encryption = data.encryption || 'WPA';
     const hidden = data.hidden ? 'true' : 'false';
     return `WIFI:T:${encryption};S:${data.ssid};P:${data.password};H:${hidden};;`;
   },
-
-  // 이메일
   email: (data) => {
     return `mailto:${data.email}?subject=${encodeURIComponent(data.subject || '')}&body=${encodeURIComponent(data.body || '')}`;
   },
-
-  // SMS
   sms: (data) => {
     return `sms:${data.phone}${data.message ? `?body=${encodeURIComponent(data.message)}` : ''}`;
   },
-
-  // 전화
   phone: (data) => `tel:${data.phone}`,
-
-  // 지도 위치
   geo: (data) => `geo:${data.latitude},${data.longitude}`,
-
-  // 이벤트/캘린더
   event: (data) => {
     const formatDate = (date) => {
       return new Date(date).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
@@ -161,21 +128,29 @@ app.post('/api/qr/generate', async (req, res) => {
     };
 
     const dataUrl = await QRCode.toDataURL(content, qrOptions);
+    const createdAt = new Date().toISOString();
 
     // DB에 저장
-    const stmt = db.prepare(`
-      INSERT INTO qr_codes (id, type, name, content, data_url, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
-    `);
-    stmt.run(id, type, name || `${type}-${Date.now()}`, content, dataUrl);
+    const qrCode = {
+      id,
+      type,
+      name: name || `${type}-${Date.now()}`,
+      content,
+      data_url: dataUrl,
+      created_at: createdAt
+    };
+
+    await db.read();
+    db.data.qr_codes.push(qrCode);
+    await db.write();
 
     res.json({
       id,
       type,
-      name,
+      name: qrCode.name,
       content,
       dataUrl,
-      createdAt: new Date().toISOString()
+      createdAt
     });
   } catch (error) {
     console.error('QR 생성 오류:', error);
@@ -204,16 +179,9 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
 
     const batchId = uuidv4();
     const batchName = req.file.originalname;
+    const createdAt = new Date().toISOString();
 
-    // 배치 작업 저장
-    db.prepare(`
-      INSERT INTO batch_jobs (id, name, total_count, created_at)
-      VALUES (?, ?, ?, datetime('now'))
-    `).run(batchId, batchName, rows.length);
-
-    const results = [];
     const formatter = formatters[type];
-
     if (!formatter) {
       return res.status(400).json({ error: '지원하지 않는 QR 코드 타입입니다.' });
     }
@@ -230,30 +198,43 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
       width: options.size || 300
     };
 
+    const results = [];
+    const qrCodes = [];
+
     for (const row of rows) {
       const id = uuidv4();
       const content = formatter(row);
       const dataUrl = await QRCode.toDataURL(content, qrOptions);
       const name = row.name || row.이름 || row.ssid || row.url || `item-${id.slice(0, 8)}`;
 
-      // DB에 저장
-      db.prepare(`
-        INSERT INTO qr_codes (id, type, name, content, data_url, created_at)
-        VALUES (?, ?, ?, ?, ?, datetime('now'))
-      `).run(id, type, name, content, dataUrl);
+      const qrCode = {
+        id,
+        type,
+        name,
+        content,
+        data_url: dataUrl,
+        created_at: createdAt,
+        batch_id: batchId
+      };
 
-      // 배치 아이템 저장
-      db.prepare(`
-        INSERT INTO batch_items (id, batch_id, qr_id)
-        VALUES (?, ?, ?)
-      `).run(uuidv4(), batchId, id);
-
+      qrCodes.push(qrCode);
       results.push({
         id,
         name,
         dataUrl
       });
     }
+
+    // DB에 저장
+    await db.read();
+    db.data.qr_codes.push(...qrCodes);
+    db.data.batch_jobs.push({
+      id: batchId,
+      name: batchName,
+      total_count: results.length,
+      created_at: createdAt
+    });
+    await db.write();
 
     // 업로드 파일 삭제
     fs.unlinkSync(req.file.path);
@@ -271,28 +252,26 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
 });
 
 // QR 코드 히스토리 조회
-app.get('/api/qr/history', (req, res) => {
+app.get('/api/qr/history', async (req, res) => {
   try {
     const { page = 1, limit = 20, type } = req.query;
     const offset = (page - 1) * limit;
 
-    let query = 'SELECT * FROM qr_codes';
-    let countQuery = 'SELECT COUNT(*) as total FROM qr_codes';
-    const params = [];
+    await db.read();
+    let items = [...db.data.qr_codes];
 
     if (type) {
-      query += ' WHERE type = ?';
-      countQuery += ' WHERE type = ?';
-      params.push(type);
+      items = items.filter(qr => qr.type === type);
     }
 
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    // 최신순 정렬
+    items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-    const items = db.prepare(query).all(...params, parseInt(limit), offset);
-    const { total } = db.prepare(countQuery).get(...params);
+    const total = items.length;
+    const paginatedItems = items.slice(offset, offset + parseInt(limit));
 
     res.json({
-      items,
+      items: paginatedItems,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -307,10 +286,11 @@ app.get('/api/qr/history', (req, res) => {
 });
 
 // 단일 QR 코드 조회
-app.get('/api/qr/:id', (req, res) => {
+app.get('/api/qr/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const qr = db.prepare('SELECT * FROM qr_codes WHERE id = ?').get(id);
+    await db.read();
+    const qr = db.data.qr_codes.find(q => q.id === id);
 
     if (!qr) {
       return res.status(404).json({ error: 'QR 코드를 찾을 수 없습니다.' });
@@ -324,17 +304,18 @@ app.get('/api/qr/:id', (req, res) => {
 });
 
 // QR 코드 삭제
-app.delete('/api/qr/:id', (req, res) => {
+app.delete('/api/qr/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    await db.read();
 
-    // 배치 아이템에서도 삭제
-    db.prepare('DELETE FROM batch_items WHERE qr_id = ?').run(id);
-    const result = db.prepare('DELETE FROM qr_codes WHERE id = ?').run(id);
-
-    if (result.changes === 0) {
+    const index = db.data.qr_codes.findIndex(q => q.id === id);
+    if (index === -1) {
       return res.status(404).json({ error: 'QR 코드를 찾을 수 없습니다.' });
     }
+
+    db.data.qr_codes.splice(index, 1);
+    await db.write();
 
     res.json({ success: true });
   } catch (error) {
@@ -344,12 +325,12 @@ app.delete('/api/qr/:id', (req, res) => {
 });
 
 // 배치 작업 목록 조회
-app.get('/api/batches', (req, res) => {
+app.get('/api/batches', async (req, res) => {
   try {
-    const batches = db.prepare(`
-      SELECT * FROM batch_jobs ORDER BY created_at DESC
-    `).all();
-
+    await db.read();
+    const batches = [...db.data.batch_jobs].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
     res.json(batches);
   } catch (error) {
     console.error('배치 목록 조회 오류:', error);
@@ -358,21 +339,17 @@ app.get('/api/batches', (req, res) => {
 });
 
 // 배치 작업 상세 조회
-app.get('/api/batches/:id', (req, res) => {
+app.get('/api/batches/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    await db.read();
 
-    const batch = db.prepare('SELECT * FROM batch_jobs WHERE id = ?').get(id);
+    const batch = db.data.batch_jobs.find(b => b.id === id);
     if (!batch) {
       return res.status(404).json({ error: '배치 작업을 찾을 수 없습니다.' });
     }
 
-    const items = db.prepare(`
-      SELECT qr.* FROM qr_codes qr
-      JOIN batch_items bi ON bi.qr_id = qr.id
-      WHERE bi.batch_id = ?
-    `).all(id);
-
+    const items = db.data.qr_codes.filter(qr => qr.batch_id === id);
     res.json({ ...batch, items });
   } catch (error) {
     console.error('배치 상세 조회 오류:', error);
@@ -419,21 +396,35 @@ app.get('/api/templates/:type', (req, res) => {
 });
 
 // 통계 API
-app.get('/api/stats', (req, res) => {
+app.get('/api/stats', async (req, res) => {
   try {
-    const totalQRs = db.prepare('SELECT COUNT(*) as count FROM qr_codes').get();
-    const typeStats = db.prepare(`
-      SELECT type, COUNT(*) as count FROM qr_codes GROUP BY type
-    `).all();
-    const recentQRs = db.prepare(`
-      SELECT * FROM qr_codes ORDER BY created_at DESC LIMIT 5
-    `).all();
-    const totalBatches = db.prepare('SELECT COUNT(*) as count FROM batch_jobs').get();
+    await db.read();
+
+    const qrCodes = db.data.qr_codes;
+    const totalQRs = qrCodes.length;
+
+    // 타입별 통계
+    const typeStats = {};
+    qrCodes.forEach(qr => {
+      typeStats[qr.type] = (typeStats[qr.type] || 0) + 1;
+    });
+
+    const typeStatsArray = Object.entries(typeStats).map(([type, count]) => ({
+      type,
+      count
+    }));
+
+    // 최근 QR코드
+    const recentQRs = [...qrCodes]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 5);
+
+    const totalBatches = db.data.batch_jobs.length;
 
     res.json({
-      totalQRs: totalQRs.count,
-      totalBatches: totalBatches.count,
-      typeStats,
+      totalQRs,
+      totalBatches,
+      typeStats: typeStatsArray,
       recentQRs
     });
   } catch (error) {
