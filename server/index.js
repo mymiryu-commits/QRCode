@@ -84,6 +84,10 @@ const formatters = {
       return '';
     }
 
+    // 접미사 처리 (이름 뒤에 추가)
+    const suffix = data.접미사 || data.suffix || '';
+    const displayName = suffix ? `${name} (${suffix})` : name;
+
     // 이름에서 성/이름 분리 시도 (한글은 첫 글자가 성)
     let firstName = '', lastName = '';
     if (name) {
@@ -103,7 +107,7 @@ const formatters = {
     const lines = ['BEGIN:VCARD', 'VERSION:3.0'];
     if (name) {
       lines.push(`N:${lastName};${firstName}`);
-      lines.push(`FN:${name}`);
+      lines.push(`FN:${displayName}`);
     }
     if (data.organization || data.회사 || data.조직) {
       lines.push(`ORG:${data.organization || data.회사 || data.조직}`);
@@ -128,6 +132,11 @@ const formatters = {
     }
     if (data.note || data.메모 || data.비고) {
       lines.push(`NOTE:${data.note || data.메모 || data.비고}`);
+    }
+    // 그룹/카테고리 (삼성 연락처 그룹 지정)
+    const group = data.그룹 || data.group || data.category || data.카테고리 || '';
+    if (group) {
+      lines.push(`CATEGORIES:${group}`);
     }
     lines.push('END:VCARD');
     return lines.join('\n');
@@ -498,9 +507,9 @@ app.get('/api/templates/:type', (req, res) => {
   // 통합 템플릿 - 한글 필드명 지원, 필수 필드만 채우면 됨
   const templates = {
     vcard: [
-      { 이름: '홍길동', 전화번호: '010-1234-5678', 이메일: '', 회사: '', 직책: '', 주소: '', 메모: '' },
-      { 이름: '김철수', 전화번호: '010-9876-5432', 이메일: 'kim@example.com', 회사: '(주)회사', 직책: '대리', 주소: '', 메모: '' },
-      { 이름: '이영희', 전화번호: '010-5555-1234', 이메일: '', 회사: '', 직책: '', 주소: '', 메모: '친구' }
+      { 이름: '홍길동', 전화번호: '010-1234-5678', 이메일: '', 회사: '', 직책: '', 주소: '', 메모: '', 접미사: '2026년 강원대 1월 특강', 그룹: '강원대특강' },
+      { 이름: '김철수', 전화번호: '010-9876-5432', 이메일: 'kim@example.com', 회사: '(주)회사', 직책: '대리', 주소: '', 메모: '', 접미사: '', 그룹: '업무' },
+      { 이름: '이영희', 전화번호: '010-5555-1234', 이메일: '', 회사: '', 직책: '', 주소: '', 메모: '친구', 접미사: '', 그룹: '' }
     ],
     wifi: [
       { 네트워크이름: 'MyWiFi', 비밀번호: 'password123', 암호화: 'WPA' },
