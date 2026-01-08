@@ -136,7 +136,10 @@ const formatters = {
     // 그룹/카테고리 (삼성 연락처 그룹 지정)
     const group = data.그룹 || data.group || data.category || data.카테고리 || '';
     if (group) {
+      // 표준 vCard CATEGORIES
       lines.push(`CATEGORIES:${group}`);
+      // 안드로이드/삼성 전용 그룹 필드
+      lines.push(`X-ANDROID-CUSTOM:vnd.android.cursor.item/group_membership;${group}`);
     }
     lines.push('END:VCARD');
     return lines.join('\n');
