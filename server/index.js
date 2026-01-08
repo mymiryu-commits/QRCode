@@ -335,11 +335,24 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
     }
 
     // 업로드 파일 삭제
-    fs.unlinkSync(req.file.path);
+    try {
+      if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } catch (e) {
+      console.error('파일 삭제 오류:', e.message);
+    }
 
     // 생성된 QR이 없으면 오류
     if (results.length === 0) {
-      return res.status(400).json({ error: '유효한 데이터가 없어 QR코드를 생성할 수 없습니다. 필수 필드를 확인해주세요.' });
+      return res.status(400).json({
+        error: '유효한 데이터가 없어 QR코드를 생성할 수 없습니다. 필수 필드를 확인해주세요.',
+        hint: type === 'vcard' ? '이름 또는 전화번호가 필요합니다' :
+              type === 'wifi' ? '네트워크이름이 필요합니다' :
+              type === 'url' ? '주소(URL)가 필요합니다' :
+              type === 'email' ? '이메일 주소가 필요합니다' :
+              type === 'phone' || type === 'sms' ? '전화번호가 필요합니다' : '필수 필드를 확인하세요'
+      });
     }
 
     // DB에 저장
@@ -361,7 +374,13 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
     });
   } catch (error) {
     console.error('대량 생성 오류:', error);
-    res.status(500).json({ error: '대량 QR 코드 생성 중 오류가 발생했습니다.' });
+    // 오류 시 업로드 파일 정리
+    try {
+      if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } catch (e) { /* ignore */ }
+    res.status(500).json({ error: `대량 QR 코드 생성 중 오류: ${error.message}` });
   }
 });
 
