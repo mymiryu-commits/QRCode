@@ -1241,6 +1241,332 @@ app.get('/api/admin/stats', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+// 사용자에게 무료 구독 기간 부여 (관리자 전용)
+app.post('/api/admin/users/:id/grant-subscription', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { plan, months, reason } = req.body;
+
+    if (!plan || !months) {
+      return res.status(400).json({ error: '요금제와 기간을 입력해주세요.' });
+    }
+
+    if (!PLANS[plan]) {
+      return res.status(400).json({ error: '유효하지 않은 요금제입니다.' });
+    }
+
+    if (months < 1 || months > 24) {
+      return res.status(400).json({ error: '기간은 1~24개월 사이로 입력해주세요.' });
+    }
+
+    await db.read();
+
+    const user = db.data.users.find(u => u.id === id);
+    if (!user) {
+      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    }
+
+    // 기존 구독 만료 처리
+    const existingSubscription = db.data.subscriptions.find(
+      s => s.user_id === id && s.status === 'active'
+    );
+    if (existingSubscription) {
+      existingSubscription.status = 'cancelled';
+      existingSubscription.cancelled_at = new Date().toISOString();
+    }
+
+    // 새 무료 구독 생성
+    const now = new Date();
+    const expiresAt = new Date(now);
+    expiresAt.setMonth(expiresAt.getMonth() + parseInt(months));
+
+    const newSubscription = {
+      id: uuidv4(),
+      user_id: id,
+      plan: plan,
+      billing_cycle: 'admin_grant',
+      status: 'active',
+      payment_key: null,
+      order_id: `ADMIN_GRANT_${Date.now()}`,
+      amount: 0,
+      starts_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      auto_renew: false,
+      created_at: now.toISOString(),
+      granted_by: req.user.id,
+      grant_reason: reason || '관리자 부여'
+    };
+
+    db.data.subscriptions.push(newSubscription);
+    await db.write();
+
+    res.json({
+      success: true,
+      message: `${user.name}님에게 ${PLANS[plan].name} 요금제 ${months}개월이 부여되었습니다.`,
+      subscription: newSubscription
+    });
+  } catch (error) {
+    console.error('구독 부여 오류:', error);
+    res.status(500).json({ error: '구독 부여 중 오류가 발생했습니다.' });
+  }
+});
+
+// 단체(팀) 구독 생성 (관리자 전용)
+app.post('/api/admin/team-subscription', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { teamName, plan, months, memberEmails, discount } = req.body;
+
+    if (!teamName || !plan || !months || !memberEmails || memberEmails.length === 0) {
+      return res.status(400).json({ error: '팀 이름, 요금제, 기간, 멤버 이메일을 입력해주세요.' });
+    }
+
+    if (!PLANS[plan]) {
+      return res.status(400).json({ error: '유효하지 않은 요금제입니다.' });
+    }
+
+    await db.read();
+
+    const results = {
+      success: [],
+      notFound: [],
+      alreadyActive: []
+    };
+
+    const now = new Date();
+    const expiresAt = new Date(now);
+    expiresAt.setMonth(expiresAt.getMonth() + parseInt(months));
+
+    for (const email of memberEmails) {
+      const user = db.data.users.find(u => u.email === email.trim().toLowerCase());
+
+      if (!user) {
+        results.notFound.push(email);
+        continue;
+      }
+
+      // 기존 활성 구독 확인
+      const existingSubscription = db.data.subscriptions.find(
+        s => s.user_id === user.id && s.status === 'active'
+      );
+
+      if (existingSubscription) {
+        existingSubscription.status = 'cancelled';
+        existingSubscription.cancelled_at = now.toISOString();
+      }
+
+      // 새 구독 생성
+      const newSubscription = {
+        id: uuidv4(),
+        user_id: user.id,
+        plan: plan,
+        billing_cycle: 'team',
+        status: 'active',
+        payment_key: null,
+        order_id: `TEAM_${teamName}_${Date.now()}`,
+        amount: 0,
+        starts_at: now.toISOString(),
+        expires_at: expiresAt.toISOString(),
+        auto_renew: false,
+        created_at: now.toISOString(),
+        team_name: teamName,
+        granted_by: req.user.id,
+        discount_percent: discount || 0
+      };
+
+      db.data.subscriptions.push(newSubscription);
+      results.success.push({ email, userName: user.name });
+    }
+
+    await db.write();
+
+    // 단체 가격 계산
+    const basePrice = PLANS[plan].monthlyPrice * months * results.success.length;
+    const discountAmount = basePrice * (discount || 0) / 100;
+    const finalPrice = basePrice - discountAmount;
+
+    res.json({
+      success: true,
+      message: `${teamName} 팀 구독이 생성되었습니다.`,
+      teamName,
+      plan: PLANS[plan].name,
+      months,
+      results,
+      pricing: {
+        memberCount: results.success.length,
+        basePrice,
+        discountPercent: discount || 0,
+        discountAmount,
+        finalPrice
+      }
+    });
+  } catch (error) {
+    console.error('팀 구독 생성 오류:', error);
+    res.status(500).json({ error: '팀 구독 생성 중 오류가 발생했습니다.' });
+  }
+});
+
+// 프로모션 코드 생성 (관리자 전용)
+app.post('/api/admin/promo-codes', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { code, plan, months, maxUses, expiresAt, description } = req.body;
+
+    if (!code || !plan || !months) {
+      return res.status(400).json({ error: '코드, 요금제, 기간을 입력해주세요.' });
+    }
+
+    await db.read();
+
+    // promo_codes 배열이 없으면 생성
+    if (!db.data.promo_codes) {
+      db.data.promo_codes = [];
+    }
+
+    // 중복 코드 확인
+    const existingCode = db.data.promo_codes.find(p => p.code === code.toUpperCase());
+    if (existingCode) {
+      return res.status(400).json({ error: '이미 존재하는 프로모션 코드입니다.' });
+    }
+
+    const promoCode = {
+      id: uuidv4(),
+      code: code.toUpperCase(),
+      plan,
+      months: parseInt(months),
+      max_uses: maxUses || null,
+      used_count: 0,
+      expires_at: expiresAt || null,
+      description: description || '',
+      created_at: new Date().toISOString(),
+      created_by: req.user.id,
+      is_active: true
+    };
+
+    db.data.promo_codes.push(promoCode);
+    await db.write();
+
+    res.json({
+      success: true,
+      message: '프로모션 코드가 생성되었습니다.',
+      promoCode
+    });
+  } catch (error) {
+    console.error('프로모션 코드 생성 오류:', error);
+    res.status(500).json({ error: '프로모션 코드 생성 중 오류가 발생했습니다.' });
+  }
+});
+
+// 프로모션 코드 목록 (관리자 전용)
+app.get('/api/admin/promo-codes', authenticate, requireAdmin, async (req, res) => {
+  try {
+    await db.read();
+    const promoCodes = db.data.promo_codes || [];
+    res.json(promoCodes);
+  } catch (error) {
+    console.error('프로모션 코드 목록 조회 오류:', error);
+    res.status(500).json({ error: '프로모션 코드 목록 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 프로모션 코드 사용 (사용자)
+app.post('/api/promo-codes/redeem', authenticate, async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ error: '프로모션 코드를 입력해주세요.' });
+    }
+
+    await db.read();
+
+    if (!db.data.promo_codes) {
+      return res.status(404).json({ error: '유효하지 않은 프로모션 코드입니다.' });
+    }
+
+    const promoCode = db.data.promo_codes.find(p => p.code === code.toUpperCase() && p.is_active);
+
+    if (!promoCode) {
+      return res.status(404).json({ error: '유효하지 않은 프로모션 코드입니다.' });
+    }
+
+    // 만료 확인
+    if (promoCode.expires_at && new Date(promoCode.expires_at) < new Date()) {
+      return res.status(400).json({ error: '만료된 프로모션 코드입니다.' });
+    }
+
+    // 사용 횟수 확인
+    if (promoCode.max_uses && promoCode.used_count >= promoCode.max_uses) {
+      return res.status(400).json({ error: '사용 한도를 초과한 프로모션 코드입니다.' });
+    }
+
+    // 이미 사용한 사용자인지 확인
+    if (!db.data.promo_code_uses) {
+      db.data.promo_code_uses = [];
+    }
+
+    const alreadyUsed = db.data.promo_code_uses.find(
+      u => u.promo_code_id === promoCode.id && u.user_id === req.user.id
+    );
+
+    if (alreadyUsed) {
+      return res.status(400).json({ error: '이미 사용한 프로모션 코드입니다.' });
+    }
+
+    // 기존 구독 만료 처리
+    const existingSubscription = db.data.subscriptions.find(
+      s => s.user_id === req.user.id && s.status === 'active'
+    );
+    if (existingSubscription) {
+      existingSubscription.status = 'cancelled';
+      existingSubscription.cancelled_at = new Date().toISOString();
+    }
+
+    // 새 구독 생성
+    const now = new Date();
+    const expiresAt = new Date(now);
+    expiresAt.setMonth(expiresAt.getMonth() + promoCode.months);
+
+    const newSubscription = {
+      id: uuidv4(),
+      user_id: req.user.id,
+      plan: promoCode.plan,
+      billing_cycle: 'promo',
+      status: 'active',
+      payment_key: null,
+      order_id: `PROMO_${promoCode.code}_${Date.now()}`,
+      amount: 0,
+      starts_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      auto_renew: false,
+      created_at: now.toISOString(),
+      promo_code: promoCode.code
+    };
+
+    db.data.subscriptions.push(newSubscription);
+
+    // 사용 기록 추가
+    db.data.promo_code_uses.push({
+      id: uuidv4(),
+      promo_code_id: promoCode.id,
+      user_id: req.user.id,
+      used_at: now.toISOString()
+    });
+
+    // 사용 횟수 증가
+    promoCode.used_count++;
+
+    await db.write();
+
+    res.json({
+      success: true,
+      message: `${PLANS[promoCode.plan].name} 요금제 ${promoCode.months}개월이 적용되었습니다!`,
+      subscription: newSubscription
+    });
+  } catch (error) {
+    console.error('프로모션 코드 사용 오류:', error);
+    res.status(500).json({ error: '프로모션 코드 사용 중 오류가 발생했습니다.' });
+  }
+});
+
 // ========== 결제 API (토스페이먼츠) ==========
 
 // 요금제 목록 조회
