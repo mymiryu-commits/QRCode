@@ -482,19 +482,64 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 고객센터 안내 */}
-      <section className="text-center py-8">
-        <p className="text-slate-500">
-          도입 상담이 필요하신가요?{' '}
-          <a href="tel:1588-5617" className="text-primary-600 font-medium hover:text-primary-700">
-            1588-5617
-          </a>
-          {' '}또는{' '}
-          <a href="mailto:mymiryu@gmail.com" className="text-primary-600 font-medium hover:text-primary-700">
-            mymiryu@gmail.com
-          </a>
-          으로 연락주세요.
-        </p>
+      {/* 고객센터 안내 - QR코드 포함 */}
+      <section className="bg-slate-50 rounded-3xl p-8 md:p-12">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
+            도입 상담이 필요하신가요?
+          </h2>
+          <p className="text-slate-600">QR코드를 스캔하여 바로 연락하세요</p>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
+          {/* 전화 QR */}
+          <div className="text-center">
+            <div className="bg-white p-4 rounded-2xl shadow-lg mb-4 inline-block">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=tel:1588-5617`}
+                alt="전화 QR코드"
+                className="w-32 h-32"
+              />
+            </div>
+            <div className="flex items-center justify-center gap-2 text-slate-700 font-medium">
+              <Phone className="w-5 h-5 text-primary-500" />
+              <a href="tel:1588-5617" className="hover:text-primary-600">1588-5617</a>
+            </div>
+            <p className="text-sm text-slate-500 mt-1">스캔하면 바로 전화</p>
+          </div>
+
+          {/* 이메일 QR */}
+          <div className="text-center">
+            <div className="bg-white p-4 rounded-2xl shadow-lg mb-4 inline-block">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=mailto:mymiryu@gmail.com`}
+                alt="이메일 QR코드"
+                className="w-32 h-32"
+              />
+            </div>
+            <div className="flex items-center justify-center gap-2 text-slate-700 font-medium">
+              <Mail className="w-5 h-5 text-primary-500" />
+              <a href="mailto:mymiryu@gmail.com" className="hover:text-primary-600">mymiryu@gmail.com</a>
+            </div>
+            <p className="text-sm text-slate-500 mt-1">스캔하면 메일 작성</p>
+          </div>
+
+          {/* 연락처 저장 QR */}
+          <div className="text-center">
+            <div className="bg-white p-4 rounded-2xl shadow-lg mb-4 inline-block">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('BEGIN:VCARD\nVERSION:3.0\nFN:PlanX QR 고객센터\nTEL:1588-5617\nEMAIL:mymiryu@gmail.com\nURL:https://30daysliving.com\nEND:VCARD')}`}
+                alt="연락처 저장 QR코드"
+                className="w-32 h-32"
+              />
+            </div>
+            <div className="flex items-center justify-center gap-2 text-slate-700 font-medium">
+              <User className="w-5 h-5 text-primary-500" />
+              연락처 저장
+            </div>
+            <p className="text-sm text-slate-500 mt-1">스캔하면 연락처 저장</p>
+          </div>
+        </div>
       </section>
     </div>
   )
