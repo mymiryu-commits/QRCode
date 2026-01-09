@@ -2281,6 +2281,14 @@ app.put('/api/admin/settings', authenticate, requireAdmin, async (req, res) => {
       // CTA 버튼
       ctaButtonText: settings.ctaButtonText || db.data.site_settings?.ctaButtonText || '무료로 시작하기',
       ctaButtonLink: settings.ctaButtonLink || db.data.site_settings?.ctaButtonLink || '/generate',
+      // 업종별 활용 사례
+      useCases: settings.useCases || db.data.site_settings?.useCases || null,
+      // 고객 후기
+      testimonials: settings.testimonials || db.data.site_settings?.testimonials || null,
+      // 프리미엄 기능
+      premiumFeatures: settings.premiumFeatures || db.data.site_settings?.premiumFeatures || null,
+      // 캐릭터 QR 연락처
+      characterQR: settings.characterQR || db.data.site_settings?.characterQR || null,
       // 메타데이터
       updated_at: new Date().toISOString(),
       updated_by: req.user.id

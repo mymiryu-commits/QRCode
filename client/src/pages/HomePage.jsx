@@ -137,8 +137,24 @@ export default function HomePage() {
     showPremiumFeatures: true,
     showCharacterQR: true,
     ctaButtonText: '무료로 시작하기',
-    ctaButtonLink: '/generate'
+    ctaButtonLink: '/generate',
+    // 섹션 데이터
+    useCases: null,
+    testimonials: null,
+    premiumFeatures: null,
+    characterQR: null
   })
+
+  // 동적 섹션 데이터 (설정에서 가져오거나 기본값 사용)
+  const displayUseCases = settings.useCases || useCases
+  const displayTestimonials = settings.testimonials || testimonials
+  const displayPremiumFeatures = settings.premiumFeatures || premiumFeatures
+  const displayCharacterQR = settings.characterQR || {
+    phone: '1588-5617',
+    email: 'mymiryu@gmail.com',
+    contactName: 'PlanX QR 고객센터',
+    website: 'https://30daysliving.com'
+  }
 
   // 설정 로드
   useEffect(() => {
@@ -276,9 +292,11 @@ export default function HomePage() {
         </div>
 
         <div className="space-y-20">
-          {useCases.map((useCase, index) => {
-            const Icon = useCase.icon
+          {displayUseCases.map((useCase, index) => {
+            const Icon = useCase.icon || Building2
             const isReversed = index % 2 === 1
+            const colorClasses = ['from-orange-500 to-red-500', 'from-blue-500 to-cyan-500', 'from-slate-600 to-slate-800', 'from-purple-500 to-pink-500']
+            const color = useCase.color || colorClasses[index % 4]
             return (
               <div
                 key={useCase.industry}
@@ -291,33 +309,35 @@ export default function HomePage() {
                     alt={useCase.title}
                     className="rounded-3xl shadow-2xl shadow-slate-300/50 w-full object-cover aspect-[4/3]"
                   />
-                  <div className={`absolute -bottom-4 ${isReversed ? '-left-4' : '-right-4'} bg-gradient-to-r ${useCase.color} p-4 rounded-2xl shadow-xl`}>
+                  <div className={`absolute -bottom-4 ${isReversed ? '-left-4' : '-right-4'} bg-gradient-to-r ${color} p-4 rounded-2xl shadow-xl`}>
                     <Icon className="w-8 h-8 text-white" />
                   </div>
                 </div>
 
                 {/* 텍스트 */}
                 <div className={`${isReversed ? 'lg:order-1' : ''}`}>
-                  <span className={`inline-block px-4 py-1.5 bg-gradient-to-r ${useCase.color} text-white text-sm font-semibold rounded-full mb-4`}>
+                  <span className={`inline-block px-4 py-1.5 bg-gradient-to-r ${color} text-white text-sm font-semibold rounded-full mb-4`}>
                     {useCase.industry}
                   </span>
                   <h3 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4">{useCase.title}</h3>
                   <p className="text-lg text-slate-600 mb-6">{useCase.description}</p>
 
+                  {useCase.benefits && useCase.benefits.length > 0 && (
                   <div className="space-y-3 mb-8">
                     {useCase.benefits.map((benefit) => (
                       <div key={benefit} className="flex items-center gap-3">
-                        <div className={`w-6 h-6 rounded-full bg-gradient-to-r ${useCase.color} flex items-center justify-center flex-shrink-0`}>
+                        <div className={`w-6 h-6 rounded-full bg-gradient-to-r ${color} flex items-center justify-center flex-shrink-0`}>
                           <CheckCircle2 className="w-4 h-4 text-white" />
                         </div>
                         <span className="text-slate-700">{benefit}</span>
                       </div>
                     ))}
                   </div>
+                  )}
 
                   <Link
                     to="/generate"
-                    className={`inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${useCase.color} text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-200`}
+                    className={`inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${color} text-white rounded-xl font-semibold hover:shadow-lg transition-all duration-200`}
                   >
                     {useCase.industry} QR 만들기
                     <ArrowRight className="w-5 h-5" />
@@ -347,8 +367,8 @@ export default function HomePage() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
-          {premiumFeatures.map((feature) => {
-            const Icon = feature.icon
+          {displayPremiumFeatures.map((feature) => {
+            const Icon = feature.icon || Sparkles
             return (
               <div
                 key={feature.title}
@@ -399,13 +419,13 @@ export default function HomePage() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
-          {testimonials.map((testimonial, index) => (
+          {displayTestimonials.map((testimonial, index) => (
             <div
               key={index}
               className="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/50 border border-slate-100 hover:shadow-2xl transition-shadow"
             >
               <div className="flex gap-1 mb-6">
-                {[...Array(testimonial.rating)].map((_, i) => (
+                {[...Array(testimonial.rating || 5)].map((_, i) => (
                   <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                 ))}
               </div>
@@ -602,7 +622,7 @@ export default function HomePage() {
                 {/* QR코드 - 곰 배 위에 */}
                 <div className="absolute top-[149px] left-1/2 -translate-x-1/2">
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=tel:1588-5617&color=92400E&bgcolor=FFF8F0`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=tel:${displayCharacterQR.phone}&color=92400E&bgcolor=FFF8F0`}
                     alt="전화 QR코드"
                     className="w-[62px] h-[62px] rounded"
                   />
@@ -611,7 +631,7 @@ export default function HomePage() {
             </div>
             <div className="mt-1 flex items-center justify-center gap-2 text-amber-700 font-semibold">
               <Phone className="w-4 h-4" />
-              <a href="tel:1588-5617" className="hover:text-amber-500 transition-colors">1588-5617</a>
+              <a href={`tel:${displayCharacterQR.phone}`} className="hover:text-amber-500 transition-colors">{displayCharacterQR.phone}</a>
             </div>
           </div>
 
@@ -667,7 +687,7 @@ export default function HomePage() {
                 {/* QR코드 - 토끼 배 위에 */}
                 <div className="absolute top-[153px] left-1/2 -translate-x-1/2">
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=mailto:mymiryu@gmail.com&color=DB2777&bgcolor=FFFFFF`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=mailto:${displayCharacterQR.email}&color=DB2777&bgcolor=FFFFFF`}
                     alt="이메일 QR코드"
                     className="w-[58px] h-[58px] rounded"
                   />
@@ -676,7 +696,7 @@ export default function HomePage() {
             </div>
             <div className="mt-1 flex items-center justify-center gap-2 text-pink-700 font-semibold text-sm">
               <Mail className="w-4 h-4" />
-              <a href="mailto:mymiryu@gmail.com" className="hover:text-pink-500 transition-colors">mymiryu@gmail.com</a>
+              <a href={`mailto:${displayCharacterQR.email}`} className="hover:text-pink-500 transition-colors">{displayCharacterQR.email}</a>
             </div>
           </div>
 
@@ -742,7 +762,7 @@ export default function HomePage() {
                 {/* QR코드 - 고양이 배 위에 */}
                 <div className="absolute top-[153px] left-1/2 -translate-x-1/2">
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent('BEGIN:VCARD\nVERSION:3.0\nFN:PlanX QR 고객센터\nTEL:1588-5617\nEMAIL:mymiryu@gmail.com\nURL:https://30daysliving.com\nEND:VCARD')}&color=7C3AED&bgcolor=FAF5FF`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`BEGIN:VCARD\nVERSION:3.0\nFN:${displayCharacterQR.contactName}\nTEL:${displayCharacterQR.phone}\nEMAIL:${displayCharacterQR.email}\nURL:${displayCharacterQR.website}\nEND:VCARD`)}&color=7C3AED&bgcolor=FAF5FF`}
                     alt="연락처 저장 QR코드"
                     className="w-[58px] h-[58px] rounded"
                   />

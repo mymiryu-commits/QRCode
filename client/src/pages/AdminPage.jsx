@@ -48,7 +48,34 @@ export default function AdminPage() {
     showCharacterQR: true,
     // CTA 버튼
     ctaButtonText: '무료로 시작하기',
-    ctaButtonLink: '/generate'
+    ctaButtonLink: '/generate',
+    // 업종별 활용 사례
+    useCases: [
+      { industry: '요식업', title: '스마트 메뉴판', description: '테이블마다 QR코드를 배치하여 고객이 스마트폰으로 메뉴를 확인하고 주문할 수 있습니다.', image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop' },
+      { industry: '부동산', title: '매물 정보 QR', description: '현수막, 명함에 QR코드를 넣어 매물 상세 정보와 연락처를 즉시 전달합니다.', image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&h=400&fit=crop' },
+      { industry: '기업/사무실', title: '디지털 명함', description: '종이 명함 대신 QR코드로 연락처를 전달하여 환경도 보호하고 전문성도 높입니다.', image: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&h=400&fit=crop' },
+      { industry: '이벤트/행사', title: '행사 안내 QR', description: '초대장, 포스터에 QR코드를 넣어 행사 정보와 참가 신청을 간편하게 처리합니다.', image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=400&fit=crop' }
+    ],
+    // 고객 후기
+    testimonials: [
+      { name: '김사장', role: '강남 레스토랑 대표', content: '메뉴판 QR코드 도입 후 인쇄비가 월 50만원 이상 절감됐어요. 메뉴 변경도 실시간으로 가능해서 너무 편합니다.', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face' },
+      { name: '이과장', role: '○○부동산 팀장', content: '현수막에 QR코드를 넣으니 밤에도 고객이 매물 정보를 확인하고 연락이 와요. 문의가 30% 이상 늘었습니다.', image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face' },
+      { name: '박대리', role: 'IT 스타트업', content: '대량 생성 기능으로 직원 200명 명함 QR코드를 10분 만에 만들었어요. API 연동도 깔끔합니다.', image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face' }
+    ],
+    // 프리미엄 기능
+    premiumFeatures: [
+      { title: '브랜드 커스터마이징', description: '로고 삽입, 색상 변경으로 브랜드 아이덴티티를 유지한 QR코드', image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=400&h=300&fit=crop' },
+      { title: '스캔 분석 리포트', description: '언제, 어디서, 몇 명이 스캔했는지 실시간 데이터 확인', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop' },
+      { title: '동적 QR코드', description: '인쇄 후에도 연결 URL 변경 가능, 캠페인별 관리', image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop' },
+      { title: 'API 연동', description: '자체 시스템과 연동하여 자동화된 QR코드 생성', image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=300&fit=crop' }
+    ],
+    // 캐릭터 QR 연락처
+    characterQR: {
+      phone: '1588-5617',
+      email: 'mymiryu@gmail.com',
+      contactName: 'PlanX QR 고객센터',
+      website: 'https://30daysliving.com'
+    }
   })
   const [availableImages, setAvailableImages] = useState([])
   const [settingsLoading, setSettingsLoading] = useState(false)
@@ -677,6 +704,239 @@ export default function AdminPage() {
                   </label>
                 </div>
               </div>
+
+              {/* 캐릭터 QR 연락처 설정 */}
+              {siteSettings.showCharacterQR !== false && (
+              <div className="bg-amber-50 rounded-xl p-6">
+                <h4 className="font-medium text-gray-900 mb-4">캐릭터 QR 연락처</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">전화번호</label>
+                    <input
+                      type="text"
+                      value={siteSettings.characterQR?.phone || ''}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, characterQR: { ...prev.characterQR, phone: e.target.value } }))}
+                      placeholder="1588-5617"
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+                    <input
+                      type="email"
+                      value={siteSettings.characterQR?.email || ''}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, characterQR: { ...prev.characterQR, email: e.target.value } }))}
+                      placeholder="support@example.com"
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">연락처 이름</label>
+                    <input
+                      type="text"
+                      value={siteSettings.characterQR?.contactName || ''}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, characterQR: { ...prev.characterQR, contactName: e.target.value } }))}
+                      placeholder="PlanX QR 고객센터"
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">웹사이트</label>
+                    <input
+                      type="url"
+                      value={siteSettings.characterQR?.website || ''}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, characterQR: { ...prev.characterQR, website: e.target.value } }))}
+                      placeholder="https://example.com"
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* 업종별 활용 사례 설정 */}
+              {siteSettings.showUseCases !== false && (
+              <div className="bg-blue-50 rounded-xl p-6">
+                <h4 className="font-medium text-gray-900 mb-4">업종별 활용 사례</h4>
+                <div className="space-y-4">
+                  {(siteSettings.useCases || []).map((useCase, index) => (
+                    <div key={index} className="bg-white p-4 rounded-lg border">
+                      <div className="flex items-center gap-4 mb-3">
+                        <span className="text-sm font-bold text-blue-600">#{index + 1}</span>
+                        <input
+                          type="text"
+                          value={useCase.industry}
+                          onChange={(e) => {
+                            const newUseCases = [...siteSettings.useCases]
+                            newUseCases[index] = { ...newUseCases[index], industry: e.target.value }
+                            setSiteSettings(prev => ({ ...prev, useCases: newUseCases }))
+                          }}
+                          placeholder="업종명"
+                          className="flex-1 px-3 py-1.5 border rounded text-sm"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={useCase.title}
+                          onChange={(e) => {
+                            const newUseCases = [...siteSettings.useCases]
+                            newUseCases[index] = { ...newUseCases[index], title: e.target.value }
+                            setSiteSettings(prev => ({ ...prev, useCases: newUseCases }))
+                          }}
+                          placeholder="제목"
+                          className="px-3 py-1.5 border rounded text-sm"
+                        />
+                        <input
+                          type="url"
+                          value={useCase.image}
+                          onChange={(e) => {
+                            const newUseCases = [...siteSettings.useCases]
+                            newUseCases[index] = { ...newUseCases[index], image: e.target.value }
+                            setSiteSettings(prev => ({ ...prev, useCases: newUseCases }))
+                          }}
+                          placeholder="이미지 URL"
+                          className="px-3 py-1.5 border rounded text-sm"
+                        />
+                      </div>
+                      <textarea
+                        value={useCase.description}
+                        onChange={(e) => {
+                          const newUseCases = [...siteSettings.useCases]
+                          newUseCases[index] = { ...newUseCases[index], description: e.target.value }
+                          setSiteSettings(prev => ({ ...prev, useCases: newUseCases }))
+                        }}
+                        placeholder="설명"
+                        rows={2}
+                        className="w-full mt-3 px-3 py-1.5 border rounded text-sm"
+                      />
+                      {useCase.image && (
+                        <img src={useCase.image} alt={useCase.title} className="mt-2 h-20 rounded object-cover" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              )}
+
+              {/* 고객 후기 설정 */}
+              {siteSettings.showTestimonials !== false && (
+              <div className="bg-yellow-50 rounded-xl p-6">
+                <h4 className="font-medium text-gray-900 mb-4">고객 후기</h4>
+                <div className="space-y-4">
+                  {(siteSettings.testimonials || []).map((testimonial, index) => (
+                    <div key={index} className="bg-white p-4 rounded-lg border">
+                      <div className="flex items-center gap-4 mb-3">
+                        <span className="text-sm font-bold text-yellow-600">#{index + 1}</span>
+                        <input
+                          type="text"
+                          value={testimonial.name}
+                          onChange={(e) => {
+                            const newTestimonials = [...siteSettings.testimonials]
+                            newTestimonials[index] = { ...newTestimonials[index], name: e.target.value }
+                            setSiteSettings(prev => ({ ...prev, testimonials: newTestimonials }))
+                          }}
+                          placeholder="이름"
+                          className="flex-1 px-3 py-1.5 border rounded text-sm"
+                        />
+                        <input
+                          type="text"
+                          value={testimonial.role}
+                          onChange={(e) => {
+                            const newTestimonials = [...siteSettings.testimonials]
+                            newTestimonials[index] = { ...newTestimonials[index], role: e.target.value }
+                            setSiteSettings(prev => ({ ...prev, testimonials: newTestimonials }))
+                          }}
+                          placeholder="직책/회사"
+                          className="flex-1 px-3 py-1.5 border rounded text-sm"
+                        />
+                      </div>
+                      <div className="flex gap-3 items-start">
+                        <div className="flex-1">
+                          <textarea
+                            value={testimonial.content}
+                            onChange={(e) => {
+                              const newTestimonials = [...siteSettings.testimonials]
+                              newTestimonials[index] = { ...newTestimonials[index], content: e.target.value }
+                              setSiteSettings(prev => ({ ...prev, testimonials: newTestimonials }))
+                            }}
+                            placeholder="후기 내용"
+                            rows={2}
+                            className="w-full px-3 py-1.5 border rounded text-sm"
+                          />
+                          <input
+                            type="url"
+                            value={testimonial.image}
+                            onChange={(e) => {
+                              const newTestimonials = [...siteSettings.testimonials]
+                              newTestimonials[index] = { ...newTestimonials[index], image: e.target.value }
+                              setSiteSettings(prev => ({ ...prev, testimonials: newTestimonials }))
+                            }}
+                            placeholder="프로필 이미지 URL"
+                            className="w-full mt-2 px-3 py-1.5 border rounded text-sm"
+                          />
+                        </div>
+                        {testimonial.image && (
+                          <img src={testimonial.image} alt={testimonial.name} className="w-16 h-16 rounded-full object-cover" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              )}
+
+              {/* 프리미엄 기능 설정 */}
+              {siteSettings.showPremiumFeatures !== false && (
+              <div className="bg-purple-50 rounded-xl p-6">
+                <h4 className="font-medium text-gray-900 mb-4">프리미엄 기능</h4>
+                <div className="space-y-4">
+                  {(siteSettings.premiumFeatures || []).map((feature, index) => (
+                    <div key={index} className="bg-white p-4 rounded-lg border">
+                      <div className="flex items-center gap-4 mb-3">
+                        <span className="text-sm font-bold text-purple-600">#{index + 1}</span>
+                        <input
+                          type="text"
+                          value={feature.title}
+                          onChange={(e) => {
+                            const newFeatures = [...siteSettings.premiumFeatures]
+                            newFeatures[index] = { ...newFeatures[index], title: e.target.value }
+                            setSiteSettings(prev => ({ ...prev, premiumFeatures: newFeatures }))
+                          }}
+                          placeholder="기능 제목"
+                          className="flex-1 px-3 py-1.5 border rounded text-sm"
+                        />
+                      </div>
+                      <textarea
+                        value={feature.description}
+                        onChange={(e) => {
+                          const newFeatures = [...siteSettings.premiumFeatures]
+                          newFeatures[index] = { ...newFeatures[index], description: e.target.value }
+                          setSiteSettings(prev => ({ ...prev, premiumFeatures: newFeatures }))
+                        }}
+                        placeholder="설명"
+                        rows={2}
+                        className="w-full px-3 py-1.5 border rounded text-sm"
+                      />
+                      <input
+                        type="url"
+                        value={feature.image}
+                        onChange={(e) => {
+                          const newFeatures = [...siteSettings.premiumFeatures]
+                          newFeatures[index] = { ...newFeatures[index], image: e.target.value }
+                          setSiteSettings(prev => ({ ...prev, premiumFeatures: newFeatures }))
+                        }}
+                        placeholder="이미지 URL"
+                        className="w-full mt-2 px-3 py-1.5 border rounded text-sm"
+                      />
+                      {feature.image && (
+                        <img src={feature.image} alt={feature.title} className="mt-2 h-20 rounded object-cover" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              )}
 
               {/* 미리보기 */}
               <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6">
