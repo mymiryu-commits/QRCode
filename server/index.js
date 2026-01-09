@@ -2289,6 +2289,8 @@ app.put('/api/admin/settings', authenticate, requireAdmin, async (req, res) => {
       premiumFeatures: settings.premiumFeatures || db.data.site_settings?.premiumFeatures || null,
       // 캐릭터 QR 연락처
       characterQR: settings.characterQR || db.data.site_settings?.characterQR || null,
+      // FAQ
+      faq: settings.faq || db.data.site_settings?.faq || null,
       // 메타데이터
       updated_at: new Date().toISOString(),
       updated_by: req.user.id

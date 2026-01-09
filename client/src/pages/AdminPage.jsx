@@ -75,7 +75,14 @@ export default function AdminPage() {
       email: 'mymiryu@gmail.com',
       contactName: 'PlanX QR 고객센터',
       website: 'https://30daysliving.com'
-    }
+    },
+    // FAQ
+    faq: [
+      { question: '다이나믹 QR코드란?', answer: 'QR코드는 그대로 두고 연결되는 URL을 언제든 변경할 수 있습니다. 인쇄 후에도 목적지를 수정할 수 있어 재인쇄 비용을 절약할 수 있습니다.' },
+      { question: '스캔 분석이란?', answer: 'QR코드가 언제, 어디서, 어떤 기기로 스캔되었는지 통계를 제공합니다. 마케팅 효과를 측정하는데 유용합니다.' },
+      { question: '언제든 플랜을 변경할 수 있나요?', answer: '네, 언제든 상위 플랜으로 업그레이드할 수 있습니다. 남은 기간에 대해 일할 계산됩니다.' },
+      { question: '환불 정책은?', answer: '결제 후 7일 이내 환불 요청 시 전액 환불됩니다. 7일 이후에는 남은 기간에 대해 일할 환불됩니다.' }
+    ]
   })
   const [availableImages, setAvailableImages] = useState([])
   const [settingsLoading, setSettingsLoading] = useState(false)
@@ -225,6 +232,9 @@ export default function AdminPage() {
     } else if (sectionType === 'premiumFeatures') {
       const newItem = { title: '새 기능', description: '기능 설명을 입력하세요.', image: '' }
       setSiteSettings(prev => ({ ...prev, premiumFeatures: [...(prev.premiumFeatures || []), newItem] }))
+    } else if (sectionType === 'faq') {
+      const newItem = { question: '새 질문', answer: '답변을 입력하세요.' }
+      setSiteSettings(prev => ({ ...prev, faq: [...(prev.faq || []), newItem] }))
     }
   }
 
@@ -246,6 +256,11 @@ export default function AdminPage() {
       setSiteSettings(prev => ({
         ...prev,
         premiumFeatures: prev.premiumFeatures.filter((_, i) => i !== index)
+      }))
+    } else if (sectionType === 'faq') {
+      setSiteSettings(prev => ({
+        ...prev,
+        faq: prev.faq.filter((_, i) => i !== index)
       }))
     }
     // 이미지 선택기 초기화
@@ -1173,6 +1188,60 @@ export default function AdminPage() {
                 </div>
               </div>
               )}
+
+              {/* FAQ 설정 */}
+              <div className="bg-green-50 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium text-gray-900">FAQ (자주 묻는 질문)</h4>
+                  <button
+                    type="button"
+                    onClick={() => handleAddSectionItem('faq')}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    항목 추가
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {(siteSettings.faq || []).map((item, index) => (
+                    <div key={index} className="bg-white p-4 rounded-lg border relative">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSectionItem('faq', index)}
+                        className="absolute top-2 right-2 p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                        title="삭제"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <div className="flex items-center gap-4 mb-3 pr-8">
+                        <span className="text-sm font-bold text-green-600">Q{index + 1}</span>
+                        <input
+                          type="text"
+                          value={item.question}
+                          onChange={(e) => {
+                            const newFaq = [...siteSettings.faq]
+                            newFaq[index] = { ...newFaq[index], question: e.target.value }
+                            setSiteSettings(prev => ({ ...prev, faq: newFaq }))
+                          }}
+                          placeholder="질문"
+                          className="flex-1 px-3 py-1.5 border rounded text-sm font-medium"
+                        />
+                      </div>
+                      <textarea
+                        value={item.answer}
+                        onChange={(e) => {
+                          const newFaq = [...siteSettings.faq]
+                          newFaq[index] = { ...newFaq[index], answer: e.target.value }
+                          setSiteSettings(prev => ({ ...prev, faq: newFaq }))
+                        }}
+                        placeholder="답변"
+                        rows={2}
+                        className="w-full px-3 py-1.5 border rounded text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* 미리보기 */}
               <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6">

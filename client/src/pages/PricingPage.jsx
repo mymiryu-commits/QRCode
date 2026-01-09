@@ -12,13 +12,33 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(true)
   const [billingCycle, setBillingCycle] = useState('monthly')
   const [processingPlan, setProcessingPlan] = useState(null)
+  const [settings, setSettings] = useState(null)
+
+  // 기본 FAQ
+  const defaultFaq = [
+    { question: '다이나믹 QR코드란?', answer: 'QR코드는 그대로 두고 연결되는 URL을 언제든 변경할 수 있습니다. 인쇄 후에도 목적지를 수정할 수 있어 재인쇄 비용을 절약할 수 있습니다.' },
+    { question: '스캔 분석이란?', answer: 'QR코드가 언제, 어디서, 어떤 기기로 스캔되었는지 통계를 제공합니다. 마케팅 효과를 측정하는데 유용합니다.' },
+    { question: '언제든 플랜을 변경할 수 있나요?', answer: '네, 언제든 상위 플랜으로 업그레이드할 수 있습니다. 남은 기간에 대해 일할 계산됩니다.' },
+    { question: '환불 정책은?', answer: '결제 후 7일 이내 환불 요청 시 전액 환불됩니다. 7일 이후에는 남은 기간에 대해 일할 환불됩니다.' }
+  ]
 
   useEffect(() => {
     fetchPlans()
+    fetchSettings()
     if (isAuthenticated) {
       fetchSubscription()
     }
   }, [isAuthenticated])
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/settings`)
+      const data = await res.json()
+      setSettings(data)
+    } catch (error) {
+      console.error('설정 조회 오류:', error)
+    }
+  }
 
   const fetchPlans = async () => {
     try {
@@ -376,34 +396,12 @@ export default function PricingPage() {
       <div className="mt-16">
         <h2 className="text-2xl font-bold text-center mb-8">자주 묻는 질문</h2>
         <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="font-bold mb-2">다이나믹 QR코드란?</h3>
-            <p className="text-gray-600 text-sm">
-              QR코드는 그대로 두고 연결되는 URL을 언제든 변경할 수 있습니다.
-              인쇄 후에도 목적지를 수정할 수 있어 재인쇄 비용을 절약할 수 있습니다.
-            </p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="font-bold mb-2">스캔 분석이란?</h3>
-            <p className="text-gray-600 text-sm">
-              QR코드가 언제, 어디서, 어떤 기기로 스캔되었는지 통계를 제공합니다.
-              마케팅 효과를 측정하는데 유용합니다.
-            </p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="font-bold mb-2">언제든 플랜을 변경할 수 있나요?</h3>
-            <p className="text-gray-600 text-sm">
-              네, 언제든 상위 플랜으로 업그레이드할 수 있습니다.
-              남은 기간에 대해 일할 계산됩니다.
-            </p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="font-bold mb-2">환불 정책은?</h3>
-            <p className="text-gray-600 text-sm">
-              결제 후 7일 이내 환불 요청 시 전액 환불됩니다.
-              7일 이후에는 남은 기간에 대해 일할 환불됩니다.
-            </p>
-          </div>
+          {(settings?.faq || defaultFaq).map((item, index) => (
+            <div key={index} className="bg-white p-6 rounded-lg shadow">
+              <h3 className="font-bold mb-2">{item.question}</h3>
+              <p className="text-gray-600 text-sm">{item.answer}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
