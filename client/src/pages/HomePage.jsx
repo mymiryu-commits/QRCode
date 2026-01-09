@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import axios from 'axios'
 import {
   QrCode, User, Wifi, Link as LinkIcon, Mail, Phone,
   MessageSquare, MapPin, Calendar, Upload, ArrowRight,
@@ -123,6 +125,29 @@ const clientLogos = [
 ]
 
 export default function HomePage() {
+  // 사이트 설정 상태
+  const [settings, setSettings] = useState({
+    heroImage: '/images/1.png',
+    heroTitle: '10시간 → 10분으로',
+    heroSubtitle: '연락처 일괄 저장',
+    heroDescription: '엑셀로 관리하던 수백 명의 연락처, QR코드 하나로 고객 폰에 바로 저장하세요.'
+  })
+
+  // 설정 로드
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await axios.get('/api/settings')
+        if (res.data) {
+          setSettings(prev => ({ ...prev, ...res.data }))
+        }
+      } catch (err) {
+        console.error('설정 로드 실패:', err)
+      }
+    }
+    fetchSettings()
+  }, [])
+
   return (
     <div className="space-y-24 animate-fade-in">
       {/* 히어로 섹션 - 워크플로우 이미지 */}
@@ -138,15 +163,14 @@ export default function HomePage() {
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
               <span className="line-through text-slate-400 text-3xl md:text-4xl">10시간</span>
               <span className="text-primary-500 mx-2">→</span>
-              <span className="text-primary-600">10분</span>으로
+              <span className="text-primary-600">{settings.heroTitle.split('→')[1]?.trim() || '10분'}</span>으로
               <span className="block bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                연락처 일괄 저장
+                {settings.heroSubtitle}
               </span>
             </h1>
 
             <p className="text-lg md:text-xl text-slate-600 max-w-xl mb-8">
-              엑셀로 받은 <strong className="text-slate-800">수백 명의 고객 연락처</strong>를
-              일일이 입력하지 마세요. QR코드 하나로 한 번에 저장합니다.
+              {settings.heroDescription || '엑셀로 받은 수백 명의 고객 연락처를 일일이 입력하지 마세요. QR코드 하나로 한 번에 저장합니다.'}
             </p>
 
             <div className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4 mb-8">
@@ -176,7 +200,7 @@ export default function HomePage() {
           <div className="relative">
             <div className="relative z-10">
               <img
-                src="/images/1.png"
+                src={settings.heroImage}
                 alt="엑셀에서 QR코드로, 10시간 작업을 10분으로"
                 className="rounded-3xl shadow-2xl shadow-slate-300/50 w-full"
               />

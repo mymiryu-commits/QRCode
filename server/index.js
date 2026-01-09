@@ -2207,6 +2207,117 @@ app.post('/api/qr/:id/add-logo', authenticate, checkPremiumFeature('logo_insert'
   }
 });
 
+// ========== 사이트 설정 API ==========
+
+// 사이트 설정 조회 (공개)
+app.get('/api/settings', async (req, res) => {
+  try {
+    await db.read();
+
+    // 기본 설정
+    const defaultSettings = {
+      heroImage: '/images/1.png',
+      heroTitle: '10시간 → 10분으로',
+      heroSubtitle: '연락처 일괄 저장',
+      heroDescription: '엑셀로 관리하던 수백 명의 연락처, QR코드 하나로 고객 폰에 바로 저장하세요.'
+    };
+
+    const settings = db.data.site_settings || defaultSettings;
+    res.json(settings);
+  } catch (error) {
+    console.error('설정 조회 오류:', error);
+    res.status(500).json({ error: '설정을 불러오는 중 오류가 발생했습니다.' });
+  }
+});
+
+// 사이트 설정 저장 (관리자 전용)
+app.put('/api/admin/settings', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { heroImage, heroTitle, heroSubtitle, heroDescription } = req.body;
+
+    await db.read();
+
+    db.data.site_settings = {
+      heroImage: heroImage || '/images/1.png',
+      heroTitle: heroTitle || '10시간 → 10분으로',
+      heroSubtitle: heroSubtitle || '연락처 일괄 저장',
+      heroDescription: heroDescription || '',
+      updated_at: new Date().toISOString(),
+      updated_by: req.user.id
+    };
+
+    await db.write();
+
+    res.json({
+      success: true,
+      message: '설정이 저장되었습니다.',
+      settings: db.data.site_settings
+    });
+  } catch (error) {
+    console.error('설정 저장 오류:', error);
+    res.status(500).json({ error: '설정 저장 중 오류가 발생했습니다.' });
+  }
+});
+
+// 이미지 업로드 (관리자 전용)
+app.post('/api/admin/upload-image', authenticate, requireAdmin, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '이미지 파일을 선택해주세요.' });
+    }
+
+    const imageUrl = `/uploads/${req.file.filename}`;
+
+    res.json({
+      success: true,
+      imageUrl,
+      filename: req.file.filename
+    });
+  } catch (error) {
+    console.error('이미지 업로드 오류:', error);
+    res.status(500).json({ error: '이미지 업로드 중 오류가 발생했습니다.' });
+  }
+});
+
+// 사용 가능한 이미지 목록 조회 (관리자 전용)
+app.get('/api/admin/images', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const imagesDir = path.join(__dirname, '../client/public/images');
+    const uploadsDir = path.join(__dirname, 'uploads');
+
+    const images = [];
+
+    // public/images 폴더
+    if (fs.existsSync(imagesDir)) {
+      const publicImages = fs.readdirSync(imagesDir)
+        .filter(f => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
+        .map(f => ({
+          name: f,
+          url: `/images/${f}`,
+          type: 'public'
+        }));
+      images.push(...publicImages);
+    }
+
+    // uploads 폴더
+    if (fs.existsSync(uploadsDir)) {
+      const uploadedImages = fs.readdirSync(uploadsDir)
+        .filter(f => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
+        .map(f => ({
+          name: f,
+          url: `/uploads/${f}`,
+          type: 'uploaded'
+        }));
+      images.push(...uploadedImages);
+    }
+
+    res.json(images);
+  } catch (error) {
+    console.error('이미지 목록 조회 오류:', error);
+    res.status(500).json({ error: '이미지 목록 조회 중 오류가 발생했습니다.' });
+  }
+});
+
 // ========== 공유 API (로그인 불필요 - 공개 접근) ==========
 
 // 배치 공유 정보 조회 (공개)

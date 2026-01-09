@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom'
 import {
   Users, Shield, Trash2, BarChart3, QrCode,
   FolderOpen, AlertCircle, Check, Crown, Gift,
-  Ticket, Building2, Calendar, X
+  Ticket, Building2, Calendar, X, Settings, Image,
+  Upload, Loader2, Save
 } from 'lucide-react'
 
 const PLANS = {
@@ -32,6 +33,17 @@ export default function AdminPage() {
   const [teamForm, setTeamForm] = useState({ teamName: '', plan: 'pro', months: 12, memberEmails: '', discount: 20 })
   const [promoForm, setPromoForm] = useState({ code: '', plan: 'pro', months: 1, maxUses: '', description: '' })
 
+  // 사이트 설정 상태
+  const [siteSettings, setSiteSettings] = useState({
+    heroImage: '/images/1.png',
+    heroTitle: '10시간 → 10분으로',
+    heroSubtitle: '연락처 일괄 저장',
+    heroDescription: '엑셀로 관리하던 수백 명의 연락처, QR코드 하나로 고객 폰에 바로 저장하세요.'
+  })
+  const [availableImages, setAvailableImages] = useState([])
+  const [settingsLoading, setSettingsLoading] = useState(false)
+  const [settingsSaved, setSettingsSaved] = useState(false)
+
   const { user, isAdmin } = useAuth()
   const navigate = useNavigate()
 
@@ -46,18 +58,62 @@ export default function AdminPage() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [usersRes, statsRes, promoRes] = await Promise.all([
+      const [usersRes, statsRes, promoRes, settingsRes, imagesRes] = await Promise.all([
         axios.get('/api/admin/users'),
         axios.get('/api/admin/stats'),
-        axios.get('/api/admin/promo-codes').catch(() => ({ data: [] }))
+        axios.get('/api/admin/promo-codes').catch(() => ({ data: [] })),
+        axios.get('/api/settings').catch(() => ({ data: {} })),
+        axios.get('/api/admin/images').catch(() => ({ data: [] }))
       ])
       setUsers(usersRes.data)
       setStats(statsRes.data)
       setPromoCodes(promoRes.data)
+      if (settingsRes.data) {
+        setSiteSettings(prev => ({ ...prev, ...settingsRes.data }))
+      }
+      setAvailableImages(imagesRes.data || [])
     } catch (err) {
       setError(err.response?.data?.error || '데이터를 불러오는데 실패했습니다.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 사이트 설정 저장
+  const handleSaveSettings = async () => {
+    setSettingsLoading(true)
+    try {
+      await axios.put('/api/admin/settings', siteSettings)
+      setSettingsSaved(true)
+      setTimeout(() => setSettingsSaved(false), 3000)
+    } catch (err) {
+      alert(err.response?.data?.error || '설정 저장에 실패했습니다.')
+    } finally {
+      setSettingsLoading(false)
+    }
+  }
+
+  // 이미지 업로드
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('image', file)
+
+    try {
+      setSettingsLoading(true)
+      const res = await axios.post('/api/admin/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      setSiteSettings(prev => ({ ...prev, heroImage: res.data.imageUrl }))
+      // 이미지 목록 새로고침
+      const imagesRes = await axios.get('/api/admin/images')
+      setAvailableImages(imagesRes.data || [])
+    } catch (err) {
+      alert(err.response?.data?.error || '이미지 업로드에 실패했습니다.')
+    } finally {
+      setSettingsLoading(false)
     }
   }
 
@@ -249,6 +305,17 @@ export default function AdminPage() {
             <BarChart3 className="w-5 h-5 inline-block mr-2" />
             사용자별 통계
           </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex-1 py-4 px-6 text-center font-medium transition-colors ${
+              activeTab === 'settings'
+                ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            <Settings className="w-5 h-5 inline-block mr-2" />
+            사이트 설정
+          </button>
         </div>
 
         <div className="p-6">
@@ -385,6 +452,163 @@ export default function AdminPage() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* 사이트 설정 탭 */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">홈페이지 설정</h3>
+                <button
+                  onClick={handleSaveSettings}
+                  disabled={settingsLoading}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    settingsSaved
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-purple-600 text-white hover:bg-purple-700'
+                  }`}
+                >
+                  {settingsLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : settingsSaved ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  {settingsSaved ? '저장됨!' : '설정 저장'}
+                </button>
+              </div>
+
+              {/* 히어로 이미지 선택 */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+                  <Image className="w-5 h-5 text-purple-600" />
+                  히어로 섹션 이미지
+                </h4>
+
+                {/* 현재 선택된 이미지 미리보기 */}
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 mb-2">현재 이미지:</p>
+                  <div className="relative inline-block">
+                    <img
+                      src={siteSettings.heroImage}
+                      alt="히어로 이미지"
+                      className="h-40 rounded-lg shadow-lg object-cover"
+                    />
+                    <span className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                      {siteSettings.heroImage}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 이미지 업로드 */}
+                <div className="mb-4">
+                  <label className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-purple-400 transition-colors w-fit">
+                    <Upload className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">새 이미지 업로드</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {/* 사용 가능한 이미지 목록 */}
+                {availableImages.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">또는 기존 이미지 선택:</p>
+                    <div className="grid grid-cols-4 md:grid-cols-6 gap-3 max-h-60 overflow-y-auto">
+                      {availableImages.map((img, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSiteSettings(prev => ({ ...prev, heroImage: img.url }))}
+                          className={`relative group rounded-lg overflow-hidden border-2 transition-all ${
+                            siteSettings.heroImage === img.url
+                              ? 'border-purple-500 ring-2 ring-purple-200'
+                              : 'border-transparent hover:border-gray-300'
+                          }`}
+                        >
+                          <img
+                            src={img.url}
+                            alt={img.name}
+                            className="w-full h-20 object-cover"
+                          />
+                          {siteSettings.heroImage === img.url && (
+                            <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
+                              <Check className="w-6 h-6 text-purple-600" />
+                            </div>
+                          )}
+                          <span className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                            {img.name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 히어로 텍스트 설정 */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h4 className="font-medium text-gray-900 mb-4">히어로 섹션 텍스트</h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">메인 타이틀</label>
+                    <input
+                      type="text"
+                      value={siteSettings.heroTitle}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, heroTitle: e.target.value }))}
+                      placeholder="10시간 → 10분으로"
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">서브 타이틀</label>
+                    <input
+                      type="text"
+                      value={siteSettings.heroSubtitle}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, heroSubtitle: e.target.value }))}
+                      placeholder="연락처 일괄 저장"
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">설명 문구</label>
+                    <textarea
+                      value={siteSettings.heroDescription}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, heroDescription: e.target.value }))}
+                      placeholder="엑셀로 관리하던 수백 명의 연락처..."
+                      rows={3}
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 미리보기 */}
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6">
+                <h4 className="font-medium text-gray-900 mb-4">미리보기</h4>
+                <div className="bg-white rounded-lg p-4 shadow-inner">
+                  <div className="flex flex-col md:flex-row gap-4 items-center">
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-400 line-through">10시간</p>
+                      <h2 className="text-xl font-bold text-purple-600">{siteSettings.heroTitle}</h2>
+                      <p className="text-lg font-semibold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                        {siteSettings.heroSubtitle}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-2">{siteSettings.heroDescription}</p>
+                    </div>
+                    <img
+                      src={siteSettings.heroImage}
+                      alt="미리보기"
+                      className="w-32 h-24 object-cover rounded-lg"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
