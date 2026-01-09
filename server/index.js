@@ -147,17 +147,25 @@ const checkPremiumFeature = (feature) => async (req, res, next) => {
 await db.read();
 const adminExists = db.data.users.find(u => u.role === 'admin');
 if (!adminExists) {
-  const hashedPassword = await bcrypt.hash('admin1234', 10);
+  const hashedPassword = await bcrypt.hash('gudtjr2', 10);
   db.data.users.push({
     id: uuidv4(),
-    email: 'admin@qrcode.com',
+    email: 'mymiryu@naver.com',
     password: hashedPassword,
     name: '관리자',
     role: 'admin',
     created_at: new Date().toISOString()
   });
   await db.write();
-  console.log('기본 관리자 계정 생성: admin@qrcode.com / admin1234');
+  console.log('기본 관리자 계정 생성: mymiryu@naver.com');
+}
+
+// 기존 사용자를 관리자로 승격 (이미 가입한 경우)
+const targetAdmin = db.data.users.find(u => u.email === 'mymiryu@naver.com');
+if (targetAdmin && targetAdmin.role !== 'admin') {
+  targetAdmin.role = 'admin';
+  await db.write();
+  console.log('관리자 권한 부여: mymiryu@naver.com');
 }
 
 // 인증 미들웨어
