@@ -176,10 +176,38 @@ export default function HomePage() {
           <div className="relative">
             <div className="relative z-10">
               <img
-                src="/images/hero-workflow.png"
+                src="/images/1.png"
                 alt="엑셀에서 QR코드로, 10시간 작업을 10분으로"
                 className="rounded-3xl shadow-2xl shadow-slate-300/50 w-full"
               />
+              {/* 워크플로우 설명 */}
+              <div className="mt-6 bg-white/90 backdrop-blur rounded-2xl p-5 shadow-lg">
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <div className="flex-1 text-center">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-emerald-100 rounded-xl flex items-center justify-center">
+                      <Upload className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <p className="font-semibold text-slate-800">엑셀 업로드</p>
+                    <p className="text-xs text-slate-500">대량 연락처</p>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-slate-300 flex-shrink-0" />
+                  <div className="flex-1 text-center">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-amber-100 rounded-xl flex items-center justify-center">
+                      <QrCode className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <p className="font-semibold text-slate-800">QR 자동생성</p>
+                    <p className="text-xs text-slate-500">개별 vCard</p>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-slate-300 flex-shrink-0" />
+                  <div className="flex-1 text-center">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-primary-100 rounded-xl flex items-center justify-center">
+                      <Phone className="w-5 h-5 text-primary-600" />
+                    </div>
+                    <p className="font-semibold text-slate-800">한 번에 저장</p>
+                    <p className="text-xs text-slate-500">스캔 1회</p>
+                  </div>
+                </div>
+              </div>
             </div>
             {/* 배경 장식 */}
             <div className="absolute top-10 right-10 w-72 h-72 bg-emerald-200 rounded-full blur-3xl opacity-40 -z-10"></div>
