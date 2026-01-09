@@ -5,7 +5,8 @@ import JSZip from 'jszip'
 import {
   Upload, FileSpreadsheet, Download, Loader2, Check,
   User, Wifi, Link as LinkIcon, Mail, AlertCircle,
-  Package, X, FileDown, Phone, MessageSquare, Info
+  Package, X, FileDown, Phone, MessageSquare, Info,
+  Users, Smartphone
 } from 'lucide-react'
 
 const batchTypes = [
@@ -126,6 +127,32 @@ export default function BatchPage() {
     }
     const blob = new Blob([ab], { type: mimeString })
     saveAs(blob, `${item.name || 'qrcode'}.png`)
+  }
+
+  // 전체 연락처 VCF 다운로드 (vCard 타입만)
+  const downloadVcf = async () => {
+    if (!results || selectedType !== 'vcard') return
+
+    try {
+      const response = await axios.get(`/api/batches/${results.batchId}/vcf`, {
+        responseType: 'blob'
+      })
+
+      // 파일명 추출
+      const contentDisposition = response.headers['content-disposition']
+      let fileName = `연락처_${results.totalCount}명.vcf`
+      if (contentDisposition) {
+        const matches = contentDisposition.match(/filename\*?=['"]?(?:UTF-8'')?([^;\n"']+)['"]?/i)
+        if (matches && matches[1]) {
+          fileName = decodeURIComponent(matches[1])
+        }
+      }
+
+      saveAs(response.data, fileName)
+    } catch (error) {
+      console.error('VCF 다운로드 오류:', error)
+      alert('VCF 다운로드 중 오류가 발생했습니다.')
+    }
   }
 
   const resetUpload = () => {
@@ -295,7 +322,7 @@ export default function BatchPage() {
                   총 {results.totalCount}개의 QR코드가 생성되었습니다
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={downloadAll}
                   className="btn-primary flex items-center gap-2"
@@ -303,6 +330,15 @@ export default function BatchPage() {
                   <Download className="w-4 h-4" />
                   전체 다운로드 (ZIP)
                 </button>
+                {selectedType === 'vcard' && (
+                  <button
+                    onClick={downloadVcf}
+                    className="btn-secondary flex items-center gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                    연락처 일괄저장 (VCF)
+                  </button>
+                )}
                 <button
                   onClick={resetUpload}
                   className="btn-secondary"
@@ -311,6 +347,29 @@ export default function BatchPage() {
                 </button>
               </div>
             </div>
+
+            {/* vCard 일괄 저장 안내 */}
+            {selectedType === 'vcard' && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Users className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-green-900 mb-1">
+                      연락처 일괄 저장 기능
+                    </h3>
+                    <p className="text-sm text-green-700 mb-2">
+                      "연락처 일괄저장 (VCF)" 버튼을 클릭하면 <strong>{results.totalCount}명의 연락처</strong>를
+                      하나의 파일로 다운로드 받을 수 있습니다.
+                    </p>
+                    <p className="text-xs text-green-600">
+                      다운로드 받은 .vcf 파일을 스마트폰에서 열면 모든 연락처가 한 번에 저장됩니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {results.items.map((item, index) => (

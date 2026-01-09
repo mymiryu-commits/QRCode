@@ -876,6 +876,158 @@ app.get('/api/batches/:id', authenticate, async (req, res) => {
   }
 });
 
+// 멀티 vCard 다운로드 - 배치의 모든 연락처를 하나의 .vcf 파일로 다운로드
+app.get('/api/batches/:id/vcf', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.read();
+
+    const batch = db.data.batch_jobs.find(b => b.id === id);
+    if (!batch) {
+      return res.status(404).json({ error: '배치 작업을 찾을 수 없습니다.' });
+    }
+
+    if (batch.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: '접근 권한이 없습니다.' });
+    }
+
+    // vCard 타입 배치만 지원
+    if (batch.type !== 'vcard') {
+      return res.status(400).json({ error: 'vCard 타입 배치만 VCF 다운로드가 가능합니다.' });
+    }
+
+    const items = db.data.qr_codes.filter(qr => qr.batch_id === id);
+
+    if (items.length === 0) {
+      return res.status(404).json({ error: '연락처가 없습니다.' });
+    }
+
+    // 모든 연락처를 하나의 VCF 파일로 결합
+    let vcfContent = '';
+
+    for (const item of items) {
+      const data = item.data || {};
+
+      // vCard 3.0 형식
+      let vcard = 'BEGIN:VCARD\r\n';
+      vcard += 'VERSION:3.0\r\n';
+
+      // 이름 (FN: 전체 이름, N: 구조화된 이름)
+      const name = data.name || data.이름 || '이름없음';
+      vcard += `FN:${name}\r\n`;
+      vcard += `N:${name};;;;\r\n`;
+
+      // 전화번호
+      const tel = data.tel || data.phone || data.전화번호 || '';
+      if (tel) {
+        vcard += `TEL;TYPE=CELL:${tel}\r\n`;
+      }
+
+      // 이메일
+      const email = data.email || data.이메일 || '';
+      if (email) {
+        vcard += `EMAIL:${email}\r\n`;
+      }
+
+      // 회사
+      const org = data.org || data.company || data.회사 || '';
+      if (org) {
+        vcard += `ORG:${org}\r\n`;
+      }
+
+      // 직책
+      const title = data.title || data.직책 || '';
+      if (title) {
+        vcard += `TITLE:${title}\r\n`;
+      }
+
+      // 주소
+      const addr = data.address || data.주소 || '';
+      if (addr) {
+        vcard += `ADR;TYPE=WORK:;;${addr};;;;\r\n`;
+      }
+
+      // 메모
+      const note = data.note || data.메모 || '';
+      if (note) {
+        vcard += `NOTE:${note}\r\n`;
+      }
+
+      // 웹사이트
+      const url = data.url || data.website || '';
+      if (url) {
+        vcard += `URL:${url}\r\n`;
+      }
+
+      vcard += 'END:VCARD\r\n';
+      vcfContent += vcard;
+    }
+
+    // 파일명 생성 (한글 지원)
+    const fileName = `${batch.name.replace(/\.[^/.]+$/, '')}_연락처_${items.length}명.vcf`;
+    const encodedFileName = encodeURIComponent(fileName);
+
+    res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`);
+    res.send(vcfContent);
+
+  } catch (error) {
+    console.error('VCF 다운로드 오류:', error);
+    res.status(500).json({ error: 'VCF 파일 생성 중 오류가 발생했습니다.' });
+  }
+});
+
+// 개별 연락처 vCard 다운로드
+app.get('/api/qr/:id/vcf', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.read();
+
+    const qrCode = db.data.qr_codes.find(qr => qr.id === id);
+    if (!qrCode) {
+      return res.status(404).json({ error: 'QR코드를 찾을 수 없습니다.' });
+    }
+
+    if (qrCode.type !== 'vcard') {
+      return res.status(400).json({ error: 'vCard 타입 QR코드만 VCF 다운로드가 가능합니다.' });
+    }
+
+    const data = qrCode.data || {};
+
+    let vcard = 'BEGIN:VCARD\r\n';
+    vcard += 'VERSION:3.0\r\n';
+
+    const name = data.name || data.이름 || '이름없음';
+    vcard += `FN:${name}\r\n`;
+    vcard += `N:${name};;;;\r\n`;
+
+    const tel = data.tel || data.phone || data.전화번호 || '';
+    if (tel) vcard += `TEL;TYPE=CELL:${tel}\r\n`;
+
+    const email = data.email || data.이메일 || '';
+    if (email) vcard += `EMAIL:${email}\r\n`;
+
+    const org = data.org || data.company || data.회사 || '';
+    if (org) vcard += `ORG:${org}\r\n`;
+
+    const title = data.title || data.직책 || '';
+    if (title) vcard += `TITLE:${title}\r\n`;
+
+    vcard += 'END:VCARD\r\n';
+
+    const fileName = `${name}.vcf`;
+    const encodedFileName = encodeURIComponent(fileName);
+
+    res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`);
+    res.send(vcard);
+
+  } catch (error) {
+    console.error('개별 VCF 다운로드 오류:', error);
+    res.status(500).json({ error: 'VCF 파일 생성 중 오류가 발생했습니다.' });
+  }
+});
+
 // 샘플 템플릿 다운로드 (한글 필드명, 최소 정보만으로도 생성 가능)
 app.get('/api/templates/:type', (req, res) => {
   const { type } = req.params;
