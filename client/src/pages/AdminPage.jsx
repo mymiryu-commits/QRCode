@@ -130,7 +130,7 @@ export default function AdminPage() {
     }
   }
 
-  // 이미지 업로드
+  // 이미지 업로드 (히어로)
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -144,6 +144,46 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       setSiteSettings(prev => ({ ...prev, heroImage: res.data.imageUrl }))
+      // 이미지 목록 새로고침
+      const imagesRes = await axios.get('/api/admin/images')
+      setAvailableImages(imagesRes.data || [])
+    } catch (err) {
+      alert(err.response?.data?.error || '이미지 업로드에 실패했습니다.')
+    } finally {
+      setSettingsLoading(false)
+    }
+  }
+
+  // 범용 이미지 업로드 핸들러
+  const handleSectionImageUpload = async (e, sectionType, index) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('image', file)
+
+    try {
+      setSettingsLoading(true)
+      const res = await axios.post('/api/admin/upload-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      const imageUrl = res.data.imageUrl
+
+      if (sectionType === 'useCases') {
+        const newUseCases = [...siteSettings.useCases]
+        newUseCases[index] = { ...newUseCases[index], image: imageUrl }
+        setSiteSettings(prev => ({ ...prev, useCases: newUseCases }))
+      } else if (sectionType === 'testimonials') {
+        const newTestimonials = [...siteSettings.testimonials]
+        newTestimonials[index] = { ...newTestimonials[index], image: imageUrl }
+        setSiteSettings(prev => ({ ...prev, testimonials: newTestimonials }))
+      } else if (sectionType === 'premiumFeatures') {
+        const newFeatures = [...siteSettings.premiumFeatures]
+        newFeatures[index] = { ...newFeatures[index], image: imageUrl }
+        setSiteSettings(prev => ({ ...prev, premiumFeatures: newFeatures }))
+      }
+
       // 이미지 목록 새로고침
       const imagesRes = await axios.get('/api/admin/images')
       setAvailableImages(imagesRes.data || [])
@@ -775,30 +815,17 @@ export default function AdminPage() {
                           className="flex-1 px-3 py-1.5 border rounded text-sm"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <input
-                          type="text"
-                          value={useCase.title}
-                          onChange={(e) => {
-                            const newUseCases = [...siteSettings.useCases]
-                            newUseCases[index] = { ...newUseCases[index], title: e.target.value }
-                            setSiteSettings(prev => ({ ...prev, useCases: newUseCases }))
-                          }}
-                          placeholder="제목"
-                          className="px-3 py-1.5 border rounded text-sm"
-                        />
-                        <input
-                          type="url"
-                          value={useCase.image}
-                          onChange={(e) => {
-                            const newUseCases = [...siteSettings.useCases]
-                            newUseCases[index] = { ...newUseCases[index], image: e.target.value }
-                            setSiteSettings(prev => ({ ...prev, useCases: newUseCases }))
-                          }}
-                          placeholder="이미지 URL"
-                          className="px-3 py-1.5 border rounded text-sm"
-                        />
-                      </div>
+                      <input
+                        type="text"
+                        value={useCase.title}
+                        onChange={(e) => {
+                          const newUseCases = [...siteSettings.useCases]
+                          newUseCases[index] = { ...newUseCases[index], title: e.target.value }
+                          setSiteSettings(prev => ({ ...prev, useCases: newUseCases }))
+                        }}
+                        placeholder="제목"
+                        className="w-full px-3 py-1.5 border rounded text-sm"
+                      />
                       <textarea
                         value={useCase.description}
                         onChange={(e) => {
@@ -810,9 +837,21 @@ export default function AdminPage() {
                         rows={2}
                         className="w-full mt-3 px-3 py-1.5 border rounded text-sm"
                       />
-                      {useCase.image && (
-                        <img src={useCase.image} alt={useCase.title} className="mt-2 h-20 rounded object-cover" />
-                      )}
+                      <div className="mt-3 flex items-center gap-3">
+                        <label className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded cursor-pointer hover:bg-blue-200 transition-colors text-sm">
+                          <Upload className="w-4 h-4" />
+                          이미지 업로드
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleSectionImageUpload(e, 'useCases', index)}
+                            className="hidden"
+                          />
+                        </label>
+                        {useCase.image && (
+                          <img src={useCase.image} alt={useCase.title} className="h-16 rounded object-cover" />
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -851,31 +890,28 @@ export default function AdminPage() {
                           className="flex-1 px-3 py-1.5 border rounded text-sm"
                         />
                       </div>
-                      <div className="flex gap-3 items-start">
-                        <div className="flex-1">
-                          <textarea
-                            value={testimonial.content}
-                            onChange={(e) => {
-                              const newTestimonials = [...siteSettings.testimonials]
-                              newTestimonials[index] = { ...newTestimonials[index], content: e.target.value }
-                              setSiteSettings(prev => ({ ...prev, testimonials: newTestimonials }))
-                            }}
-                            placeholder="후기 내용"
-                            rows={2}
-                            className="w-full px-3 py-1.5 border rounded text-sm"
-                          />
+                      <textarea
+                        value={testimonial.content}
+                        onChange={(e) => {
+                          const newTestimonials = [...siteSettings.testimonials]
+                          newTestimonials[index] = { ...newTestimonials[index], content: e.target.value }
+                          setSiteSettings(prev => ({ ...prev, testimonials: newTestimonials }))
+                        }}
+                        placeholder="후기 내용"
+                        rows={2}
+                        className="w-full px-3 py-1.5 border rounded text-sm"
+                      />
+                      <div className="mt-3 flex items-center gap-3">
+                        <label className="flex items-center gap-2 px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded cursor-pointer hover:bg-yellow-200 transition-colors text-sm">
+                          <Upload className="w-4 h-4" />
+                          프로필 이미지
                           <input
-                            type="url"
-                            value={testimonial.image}
-                            onChange={(e) => {
-                              const newTestimonials = [...siteSettings.testimonials]
-                              newTestimonials[index] = { ...newTestimonials[index], image: e.target.value }
-                              setSiteSettings(prev => ({ ...prev, testimonials: newTestimonials }))
-                            }}
-                            placeholder="프로필 이미지 URL"
-                            className="w-full mt-2 px-3 py-1.5 border rounded text-sm"
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleSectionImageUpload(e, 'testimonials', index)}
+                            className="hidden"
                           />
-                        </div>
+                        </label>
                         {testimonial.image && (
                           <img src={testimonial.image} alt={testimonial.name} className="w-16 h-16 rounded-full object-cover" />
                         )}
@@ -918,20 +954,21 @@ export default function AdminPage() {
                         rows={2}
                         className="w-full px-3 py-1.5 border rounded text-sm"
                       />
-                      <input
-                        type="url"
-                        value={feature.image}
-                        onChange={(e) => {
-                          const newFeatures = [...siteSettings.premiumFeatures]
-                          newFeatures[index] = { ...newFeatures[index], image: e.target.value }
-                          setSiteSettings(prev => ({ ...prev, premiumFeatures: newFeatures }))
-                        }}
-                        placeholder="이미지 URL"
-                        className="w-full mt-2 px-3 py-1.5 border rounded text-sm"
-                      />
-                      {feature.image && (
-                        <img src={feature.image} alt={feature.title} className="mt-2 h-20 rounded object-cover" />
-                      )}
+                      <div className="mt-3 flex items-center gap-3">
+                        <label className="flex items-center gap-2 px-3 py-1.5 bg-purple-100 text-purple-700 rounded cursor-pointer hover:bg-purple-200 transition-colors text-sm">
+                          <Upload className="w-4 h-4" />
+                          이미지 업로드
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleSectionImageUpload(e, 'premiumFeatures', index)}
+                            className="hidden"
+                          />
+                        </label>
+                        {feature.image && (
+                          <img src={feature.image} alt={feature.title} className="h-16 rounded object-cover" />
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
