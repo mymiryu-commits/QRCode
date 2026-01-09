@@ -452,6 +452,14 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
     }
 
+    // 관리자 이메일 체크 및 권한 부여
+    const adminEmails = ['mymiryu@naver.com', 'ceohs@kakao.com'];
+    if (adminEmails.includes(user.email) && user.role !== 'admin') {
+      user.role = 'admin';
+      await db.write();
+      console.log(`로그인 시 관리자 권한 부여: ${user.email}`);
+    }
+
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({
@@ -546,6 +554,14 @@ app.post('/api/auth/kakao/callback', async (req, res) => {
       user.kakao_id = kakaoId;
       user.provider = user.provider ? `${user.provider},kakao` : 'kakao';
       await db.write();
+    }
+
+    // 관리자 이메일 체크 및 권한 부여
+    const adminEmails = ['mymiryu@naver.com', 'ceohs@kakao.com'];
+    if (adminEmails.includes(user.email) && user.role !== 'admin') {
+      user.role = 'admin';
+      await db.write();
+      console.log(`카카오 로그인 시 관리자 권한 부여: ${user.email}`);
     }
 
     // 4. JWT 토큰 발급
