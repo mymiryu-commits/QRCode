@@ -223,16 +223,16 @@ export default function HomePage() {
         <div className="grid lg:grid-cols-2 gap-12 items-center py-12">
           {/* 텍스트 영역 */}
           <div className="text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500/10 to-purple-500/10 border border-primary-200 text-primary-700 rounded-full text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500/10 to-amber-500/10 border border-primary-200 text-primary-700 rounded-full text-sm font-medium mb-6">
               <Award className="w-4 h-4" />
               {settings.heroBadge}
             </div>
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-              <span className="line-through text-slate-400 text-3xl md:text-4xl">10시간</span>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-stone-900 mb-6 leading-tight">
+              <span className="line-through text-stone-400 text-3xl md:text-4xl">10시간</span>
               <span className="text-primary-500 mx-2">→</span>
               <span className="text-primary-600">{settings.heroTitle.split('→')[1]?.trim() || '10분'}</span>으로
-              <span className="block bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+              <span className="block bg-gradient-to-r from-primary-500 via-amber-500 to-orange-500 bg-clip-text text-transparent">
                 {settings.heroSubtitle}
               </span>
             </h1>
@@ -242,12 +242,12 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4 mb-8">
-              <Link to={settings.ctaButtonLink} className="group relative px-8 py-4 bg-gradient-to-r from-primary-500 to-purple-500 text-white rounded-xl font-semibold shadow-xl shadow-primary-500/25 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
+              <Link to={settings.ctaButtonLink} className="group relative px-8 py-4 bg-gradient-to-r from-primary-500 to-amber-600 text-white rounded-xl font-semibold shadow-xl shadow-primary-500/25 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
                 <QrCode className="w-5 h-5" />
                 {settings.ctaButtonText}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link to="/insurance" className="px-8 py-4 bg-white border-2 border-slate-200 text-slate-700 rounded-xl font-semibold hover:border-primary-300 hover:text-primary-600 transition-all duration-200 flex items-center gap-2">
+              <Link to="/insurance" className="px-8 py-4 bg-white border-2 border-amber-200 text-stone-700 rounded-xl font-semibold hover:border-primary-300 hover:text-primary-600 transition-all duration-200 flex items-center gap-2">
                 <Users className="w-5 h-5" />
                 보험 FP 전용
               </Link>
@@ -309,11 +309,11 @@ export default function HomePage() {
       </section>
 
       {/* 클라이언트 로고 */}
-      <section className="py-8 border-y border-slate-200">
-        <p className="text-center text-sm text-slate-500 mb-6">국내 주요 기업들이 선택한 QR코드 솔루션</p>
+      <section className="py-8 border-y border-amber-200">
+        <p className="text-center text-sm text-stone-500 mb-6">국내 주요 기업들이 선택한 QR코드 솔루션</p>
         <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
           {clientLogos.map((logo) => (
-            <div key={logo.name} className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 font-bold text-lg hover:bg-slate-200 transition-colors">
+            <div key={logo.name} className="w-16 h-16 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 font-bold text-lg hover:bg-amber-200 transition-colors">
               {logo.initial}
             </div>
           ))}
@@ -324,14 +324,14 @@ export default function HomePage() {
       {settings.showUseCases !== false && (
       <section>
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium mb-4">
             <Building2 className="w-4 h-4" />
             업종별 맞춤 솔루션
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">
             우리 업종에 딱 맞는 QR코드
           </h2>
-          <p className="text-slate-600 max-w-2xl mx-auto">
+          <p className="text-stone-600 max-w-2xl mx-auto">
             각 산업의 특성을 고려한 맞춤형 QR코드 솔루션으로 비즈니스 효율을 높이세요
           </p>
         </div>
@@ -397,7 +397,7 @@ export default function HomePage() {
 
       {/* 프리미엄 기능 - 이미지 카드 */}
       {settings.showPremiumFeatures !== false && (
-      <section className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-8 md:p-16 text-white">
+      <section className="bg-gradient-to-br from-amber-900 via-stone-800 to-amber-900 rounded-3xl p-8 md:p-16 text-white">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 text-white/80 rounded-full text-sm font-medium mb-4">
             <Sparkles className="w-4 h-4" />
@@ -406,7 +406,7 @@ export default function HomePage() {
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             단순한 QR코드 그 이상
           </h2>
-          <p className="text-slate-400 max-w-2xl mx-auto">
+          <p className="text-amber-200/70 max-w-2xl mx-auto">
             마케팅 효과를 극대화하는 고급 기능을 경험하세요
           </p>
         </div>
@@ -427,11 +427,11 @@ export default function HomePage() {
                   />
                 </div>
                 <div className="p-6">
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary-400 to-purple-400 rounded-xl flex items-center justify-center mb-4 -mt-12 relative z-10 shadow-lg">
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary-400 to-amber-400 rounded-xl flex items-center justify-center mb-4 -mt-12 relative z-10 shadow-lg">
                     <Icon className="w-6 h-6 text-white" />
                   </div>
                   <h3 className="font-semibold text-xl mb-2">{feature.title}</h3>
-                  <p className="text-slate-400">{feature.description}</p>
+                  <p className="text-amber-200/70">{feature.description}</p>
                 </div>
               </div>
             )
@@ -493,12 +493,12 @@ export default function HomePage() {
       )}
 
       {/* 사용 방법 - 비주얼 스텝 */}
-      <section className="bg-slate-50 rounded-3xl p-8 md:p-16">
+      <section className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-8 md:p-16">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">
             3단계로 간단하게
           </h2>
-          <p className="text-slate-600">복잡한 설정 없이 바로 시작하세요</p>
+          <p className="text-stone-600">복잡한 설정 없이 바로 시작하세요</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
@@ -514,12 +514,12 @@ export default function HomePage() {
                   alt={item.title}
                   className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
                 />
-                <div className="absolute -top-3 -left-3 w-12 h-12 bg-gradient-to-br from-primary-500 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
+                <div className="absolute -top-3 -left-3 w-12 h-12 bg-gradient-to-br from-primary-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
                   {item.step}
                 </div>
               </div>
-              <h3 className="font-bold text-xl text-slate-900 mb-2">{item.title}</h3>
-              <p className="text-slate-600">{item.desc}</p>
+              <h3 className="font-bold text-xl text-stone-900 mb-2">{item.title}</h3>
+              <p className="text-stone-600">{item.desc}</p>
             </div>
           ))}
         </div>
@@ -527,7 +527,7 @@ export default function HomePage() {
         <div className="text-center mt-12">
           <Link
             to="/generate"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-primary-500 to-purple-500 text-white rounded-xl font-semibold shadow-xl hover:shadow-2xl transition-all"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-primary-500 to-amber-600 text-white rounded-xl font-semibold shadow-xl hover:shadow-2xl transition-all"
           >
             <Play className="w-5 h-5" />
             지금 시작하기
@@ -538,14 +538,14 @@ export default function HomePage() {
       {/* QR 굿즈 제작 */}
       <section>
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 rounded-full text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 rounded-full text-sm font-medium mb-4">
             <ShoppingBag className="w-4 h-4" />
             QR 굿즈 제작
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-4">
             QR코드를 실물로 만나보세요
           </h2>
-          <p className="text-slate-600 max-w-2xl mx-auto">
+          <p className="text-stone-600 max-w-2xl mx-auto">
             고급 인쇄로 제작된 QR 스티커와 스탠드로 비즈니스를 더욱 프로페셔널하게
           </p>
         </div>
@@ -569,12 +569,12 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="p-5">
-                  <h3 className="font-bold text-lg text-slate-900 mb-1">{product.name}</h3>
-                  <p className="text-slate-600 text-sm mb-3">{product.description}</p>
+                  <h3 className="font-bold text-lg text-stone-900 mb-1">{product.name}</h3>
+                  <p className="text-stone-600 text-sm mb-3">{product.description}</p>
                   <div className="space-y-1.5 mb-4">
                     {product.features.map((feature) => (
-                      <div key={feature} className="flex items-center gap-2 text-xs text-slate-500">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      <div key={feature} className="flex items-center gap-2 text-xs text-stone-500">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-500" />
                         {feature}
                       </div>
                     ))}
@@ -591,14 +591,14 @@ export default function HomePage() {
         </div>
 
         <div className="mt-10 text-center">
-          <div className="inline-flex flex-col sm:flex-row items-center gap-4 p-6 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200">
+          <div className="inline-flex flex-col sm:flex-row items-center gap-4 p-6 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200">
             <div className="text-center sm:text-left">
-              <p className="font-semibold text-slate-900">대량 주문 및 맞춤 제작 문의</p>
-              <p className="text-sm text-slate-600">로고, 디자인, 수량에 맞춤 견적을 받아보세요</p>
+              <p className="font-semibold text-stone-900">대량 주문 및 맞춤 제작 문의</p>
+              <p className="text-sm text-stone-600">로고, 디자인, 수량에 맞춤 견적을 받아보세요</p>
             </div>
             <a
               href="mailto:mymiryu@gmail.com?subject=QR 굿즈 제작 문의"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-amber-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
             >
               <Mail className="w-5 h-5" />
               견적 문의하기
@@ -610,33 +610,33 @@ export default function HomePage() {
       {/* QR 타입 - 아이콘 뱃지 */}
       <section>
         <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-3">
+          <h2 className="text-2xl md:text-3xl font-bold text-stone-900 mb-3">
             지원하는 QR코드 유형
           </h2>
         </div>
 
         <div className="flex flex-wrap justify-center gap-4">
           {[
-            { icon: LinkIcon, name: 'URL', color: '#a855f7' },
-            { icon: User, name: '연락처', color: '#3b82f6' },
-            { icon: Wifi, name: 'WiFi', color: '#22c55e' },
-            { icon: Mail, name: '이메일', color: '#f97316' },
-            { icon: MessageSquare, name: 'SMS', color: '#06b6d4' },
-            { icon: Phone, name: '전화', color: '#ef4444' },
-            { icon: MapPin, name: '위치', color: '#ec4899' },
-            { icon: Calendar, name: '일정', color: '#6366f1' },
+            { icon: LinkIcon, name: 'URL', color: '#d4a574' },
+            { icon: User, name: '연락처', color: '#b8894a' },
+            { icon: Wifi, name: 'WiFi', color: '#96693a' },
+            { icon: Mail, name: '이메일', color: '#e8b866' },
+            { icon: MessageSquare, name: 'SMS', color: '#d4a574' },
+            { icon: Phone, name: '전화', color: '#b8894a' },
+            { icon: MapPin, name: '위치', color: '#96693a' },
+            { icon: Calendar, name: '일정', color: '#e8b866' },
           ].map((type) => {
             const Icon = type.icon
             return (
               <Link
                 key={type.name}
                 to="/generate"
-                className="flex items-center gap-3 px-5 py-3 bg-white rounded-xl shadow-md border border-slate-200 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                className="flex items-center gap-3 px-5 py-3 bg-white rounded-xl shadow-md border border-amber-200 hover:shadow-lg hover:-translate-y-0.5 transition-all"
               >
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${type.color}15` }}>
                   <Icon className="w-5 h-5" style={{ color: type.color }} />
                 </div>
-                <span className="font-medium text-slate-700">{type.name}</span>
+                <span className="font-medium text-stone-700">{type.name}</span>
               </Link>
             )
           })}
@@ -644,7 +644,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA 섹션 */}
-      <section className="relative text-center py-20 bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 rounded-3xl text-white overflow-hidden">
+      <section className="relative text-center py-20 bg-gradient-to-r from-primary-500 via-amber-500 to-orange-500 rounded-3xl text-white overflow-hidden">
         {/* 배경 이미지 */}
         <div className="absolute inset-0 opacity-10">
           <img
@@ -677,12 +677,12 @@ export default function HomePage() {
 
       {/* 고객센터 안내 - 귀여운 캐릭터 QR코드 */}
       {settings.showCharacterQR !== false && (
-      <section className="bg-gradient-to-br from-amber-50 via-pink-50 to-purple-50 rounded-3xl p-8 md:p-12">
+      <section className="bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 rounded-3xl p-8 md:p-12">
         <div className="text-center mb-10">
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
+          <h2 className="text-2xl md:text-3xl font-bold text-stone-900 mb-2">
             도입 상담이 필요하신가요?
           </h2>
-          <p className="text-slate-600">귀여운 친구들 배를 카메라로 찍어보세요! 📸</p>
+          <p className="text-stone-600">귀여운 친구들 배를 카메라로 찍어보세요! 📸</p>
         </div>
 
         <div className="flex flex-col md:flex-row items-start justify-center gap-6 md:gap-12">
@@ -895,8 +895,8 @@ export default function HomePage() {
 
         {/* 하단 안내 */}
         <div className="mt-8 text-center">
-          <p className="text-slate-500 text-sm bg-white/60 inline-block px-4 py-2 rounded-full">
-            💡 스마트폰 카메라로 캐릭터의 <span className="font-semibold text-slate-700">배</span>를 스캔하세요!
+          <p className="text-stone-500 text-sm bg-white/60 inline-block px-4 py-2 rounded-full">
+            💡 스마트폰 카메라로 캐릭터의 <span className="font-semibold text-stone-700">배</span>를 스캔하세요!
           </p>
         </div>
       </section>
