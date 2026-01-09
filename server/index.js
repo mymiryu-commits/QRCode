@@ -9,12 +9,62 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import axios from 'axios';
+import sharp from 'sharp';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
+const JWT_SECRET = process.env.JWT_SECRET || 'qrcode-generator-secret-key-2024';
+
+// 카카오 OAuth 설정 (환경변수 또는 기본값 - 대소문자 모두 지원)
+const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID || process.env.kakao_client_id || 'YOUR_KAKAO_CLIENT_ID';
+const KAKAO_CLIENT_SECRET = process.env.KAKAO_CLIENT_SECRET || process.env.kakao_client_secret || '';
+const KAKAO_REDIRECT_URI = process.env.KAKAO_REDIRECT_URI || process.env.kakao_redirect_uri || 'https://30daysliving.com/auth/kakao/callback';
+
+// 토스페이먼츠 설정
+const TOSS_CLIENT_KEY = process.env.TOSS_CLIENT_KEY || process.env.toss_client_key || '';
+const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY || process.env.toss_secret_key || '';
+const APP_URL = process.env.APP_URL || 'https://qrcode-production-c33d.up.railway.app';
+
+// 요금제 정의
+const PLANS = {
+  free: {
+    name: '무료',
+    price: 0,
+    monthlyLimit: 10,
+    maxSize: 300,
+    features: ['basic_qr', 'basic_colors']
+  },
+  basic: {
+    name: '베이직',
+    monthlyPrice: 4900,
+    yearlyPrice: 49000,
+    monthlyLimit: 100,
+    maxSize: 1000,
+    features: ['basic_qr', 'basic_colors', 'high_resolution', 'color_custom']
+  },
+  pro: {
+    name: '프로',
+    monthlyPrice: 9900,
+    yearlyPrice: 99000,
+    monthlyLimit: -1, // 무제한
+    maxSize: 2000,
+    features: ['basic_qr', 'basic_colors', 'high_resolution', 'color_custom', 'logo_insert', 'batch_upload', 'analytics']
+  },
+  business: {
+    name: '비즈니스',
+    monthlyPrice: 29900,
+    yearlyPrice: 299000,
+    monthlyLimit: -1,
+    maxSize: 4000,
+    features: ['basic_qr', 'basic_colors', 'high_resolution', 'color_custom', 'logo_insert', 'batch_upload', 'analytics', 'dynamic_qr', 'api_access', 'priority_support']
+  }
+};
 
 // Middleware
 app.use(cors());
@@ -28,8 +78,13 @@ if (!fs.existsSync(dataDir)) {
 }
 
 const defaultData = {
+  users: [],
   qr_codes: [],
-  batch_jobs: []
+  batch_jobs: [],
+  subscriptions: [],
+  payments: [],
+  dynamic_qr: [],
+  qr_scans: []
 };
 
 const adapter = new JSONFile(path.join(dataDir, 'db.json'));
@@ -38,7 +93,121 @@ const db = new Low(adapter, defaultData);
 // DB 초기화
 await db.read();
 db.data ||= defaultData;
+// 필요한 배열 초기화
+if (!db.data.users) db.data.users = [];
+if (!db.data.subscriptions) db.data.subscriptions = [];
+if (!db.data.payments) db.data.payments = [];
+if (!db.data.dynamic_qr) db.data.dynamic_qr = [];
+if (!db.data.qr_scans) db.data.qr_scans = [];
 await db.write();
+
+// 사용자 구독 정보 조회 헬퍼
+const getUserSubscription = async (userId) => {
+  await db.read();
+  const subscription = db.data.subscriptions.find(s =>
+    s.user_id === userId &&
+    s.status === 'active' &&
+    new Date(s.expires_at) > new Date()
+  );
+  return subscription ? subscription.plan : 'free';
+};
+
+// 사용자의 현재 월 QR 생성 수 조회
+const getMonthlyQRCount = async (userId) => {
+  await db.read();
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  return db.data.qr_codes.filter(qr =>
+    qr.user_id === userId &&
+    new Date(qr.created_at) >= startOfMonth
+  ).length;
+};
+
+// 기능 접근 권한 확인
+const hasFeature = (plan, feature) => {
+  return PLANS[plan]?.features?.includes(feature) || false;
+};
+
+// 프리미엄 기능 확인 미들웨어
+const checkPremiumFeature = (feature) => async (req, res, next) => {
+  const plan = await getUserSubscription(req.user.id);
+  if (!hasFeature(plan, feature)) {
+    return res.status(403).json({
+      error: '이 기능은 유료 플랜에서만 사용할 수 있습니다.',
+      requiredPlan: feature === 'dynamic_qr' || feature === 'api_access' ? 'business' :
+                    feature === 'logo_insert' || feature === 'analytics' ? 'pro' : 'basic',
+      currentPlan: plan
+    });
+  }
+  req.userPlan = plan;
+  next();
+};
+
+// 기본 관리자 계정 생성 (없으면)
+await db.read();
+const adminExists = db.data.users.find(u => u.role === 'admin');
+if (!adminExists) {
+  const hashedPassword = await bcrypt.hash('admin1234', 10);
+  db.data.users.push({
+    id: uuidv4(),
+    email: 'admin@qrcode.com',
+    password: hashedPassword,
+    name: '관리자',
+    role: 'admin',
+    created_at: new Date().toISOString()
+  });
+  await db.write();
+  console.log('기본 관리자 계정 생성: admin@qrcode.com / admin1234');
+}
+
+// 인증 미들웨어
+const authenticate = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: '로그인이 필요합니다.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    await db.read();
+    const user = db.data.users.find(u => u.id === decoded.userId);
+    if (!user) {
+      return res.status(401).json({ error: '유효하지 않은 사용자입니다.' });
+    }
+    req.user = { id: user.id, email: user.email, name: user.name, role: user.role };
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: '토큰이 만료되었거나 유효하지 않습니다.' });
+  }
+};
+
+// 관리자 권한 확인 미들웨어
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: '관리자 권한이 필요합니다.' });
+  }
+  next();
+};
+
+// 선택적 인증 미들웨어 (로그인 안해도 됨, 했으면 사용자 정보 추가)
+const optionalAuth = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      await db.read();
+      const user = db.data.users.find(u => u.id === decoded.userId);
+      if (user) {
+        req.user = { id: user.id, email: user.email, name: user.name, role: user.role };
+      }
+    } catch (error) {
+      // 토큰이 유효하지 않아도 계속 진행
+    }
+  }
+  next();
+};
 
 // Multer 설정
 const storage = multer.diskStorage({
@@ -205,8 +374,187 @@ const formatters = {
   }
 };
 
-// QR 코드 생성 API
-app.post('/api/qr/generate', async (req, res) => {
+// ========== 인증 API ==========
+
+// 회원가입
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: '이메일, 비밀번호, 이름을 모두 입력해주세요.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: '비밀번호는 6자 이상이어야 합니다.' });
+    }
+
+    await db.read();
+    const existingUser = db.data.users.find(u => u.email === email);
+    if (existingUser) {
+      return res.status(400).json({ error: '이미 등록된 이메일입니다.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = {
+      id: uuidv4(),
+      email,
+      password: hashedPassword,
+      name,
+      role: 'user',
+      created_at: new Date().toISOString()
+    };
+
+    db.data.users.push(user);
+    await db.write();
+
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({
+      message: '회원가입이 완료되었습니다.',
+      token,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+    });
+  } catch (error) {
+    console.error('회원가입 오류:', error);
+    res.status(500).json({ error: '회원가입 중 오류가 발생했습니다.' });
+  }
+});
+
+// 로그인
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: '이메일과 비밀번호를 입력해주세요.' });
+    }
+
+    await db.read();
+    const user = db.data.users.find(u => u.email === email);
+    if (!user) {
+      return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+    }
+
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({
+      message: '로그인 성공',
+      token,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+    });
+  } catch (error) {
+    console.error('로그인 오류:', error);
+    res.status(500).json({ error: '로그인 중 오류가 발생했습니다.' });
+  }
+});
+
+// 현재 사용자 정보 조회
+app.get('/api/auth/me', authenticate, (req, res) => {
+  res.json({ user: req.user });
+});
+
+// ========== 소셜 로그인 API ==========
+
+// 카카오 로그인 URL 반환
+app.get('/api/auth/kakao', (req, res) => {
+  const kakaoAuthUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${encodeURIComponent(KAKAO_REDIRECT_URI)}&response_type=code`;
+  res.json({ url: kakaoAuthUrl });
+});
+
+// 카카오 콜백 처리 (인가 코드로 토큰 교환)
+app.post('/api/auth/kakao/callback', async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ error: '인가 코드가 필요합니다.' });
+    }
+
+    // 1. 인가 코드로 액세스 토큰 받기
+    const tokenParams = {
+      grant_type: 'authorization_code',
+      client_id: KAKAO_CLIENT_ID,
+      redirect_uri: KAKAO_REDIRECT_URI,
+      code: code
+    };
+
+    // client_secret이 설정된 경우 추가
+    if (KAKAO_CLIENT_SECRET) {
+      tokenParams.client_secret = KAKAO_CLIENT_SECRET;
+    }
+
+    const tokenResponse = await axios.post(
+      'https://kauth.kakao.com/oauth/token',
+      new URLSearchParams(tokenParams),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+
+    const { access_token } = tokenResponse.data;
+
+    // 2. 액세스 토큰으로 사용자 정보 받기
+    const userResponse = await axios.get('https://kapi.kakao.com/v2/user/me', {
+      headers: {
+        Authorization: `Bearer ${access_token}`
+      }
+    });
+
+    const kakaoUser = userResponse.data;
+    const kakaoId = kakaoUser.id.toString();
+    const kakaoEmail = kakaoUser.kakao_account?.email || `kakao_${kakaoId}@kakao.local`;
+    const kakaoName = kakaoUser.properties?.nickname || kakaoUser.kakao_account?.profile?.nickname || '카카오 사용자';
+
+    // 3. DB에서 사용자 찾기 또는 생성
+    await db.read();
+    let user = db.data.users.find(u => u.kakao_id === kakaoId || u.email === kakaoEmail);
+
+    if (!user) {
+      // 새 사용자 생성
+      user = {
+        id: uuidv4(),
+        email: kakaoEmail,
+        name: kakaoName,
+        role: 'user',
+        kakao_id: kakaoId,
+        provider: 'kakao',
+        created_at: new Date().toISOString()
+      };
+      db.data.users.push(user);
+      await db.write();
+    } else if (!user.kakao_id) {
+      // 기존 이메일 사용자에 카카오 연동
+      user.kakao_id = kakaoId;
+      user.provider = user.provider ? `${user.provider},kakao` : 'kakao';
+      await db.write();
+    }
+
+    // 4. JWT 토큰 발급
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({
+      message: '카카오 로그인 성공',
+      token,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+    });
+  } catch (error) {
+    console.error('카카오 로그인 오류:', error.response?.data || error.message);
+    res.status(500).json({ error: '카카오 로그인 중 오류가 발생했습니다.' });
+  }
+});
+
+// ========== QR 코드 API ==========
+
+// QR 코드 생성 API (로그인 필수)
+app.post('/api/qr/generate', authenticate, async (req, res) => {
   try {
     const { type, data, name, options = {} } = req.body;
 
@@ -233,14 +581,15 @@ app.post('/api/qr/generate', async (req, res) => {
     const dataUrl = await QRCode.toDataURL(content, qrOptions);
     const createdAt = new Date().toISOString();
 
-    // DB에 저장
+    // DB에 저장 (사용자 ID 포함)
     const qrCode = {
       id,
       type,
       name: name || `${type}-${Date.now()}`,
       content,
       data_url: dataUrl,
-      created_at: createdAt
+      created_at: createdAt,
+      user_id: req.user.id
     };
 
     await db.read();
@@ -261,8 +610,8 @@ app.post('/api/qr/generate', async (req, res) => {
   }
 });
 
-// 대량 QR 생성 (엑셀/CSV 업로드)
-app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
+// 대량 QR 생성 (엑셀/CSV 업로드, 로그인 필수)
+app.post('/api/qr/batch', authenticate, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: '파일이 업로드되지 않았습니다.' });
@@ -331,7 +680,8 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
           content,
           data_url: dataUrl,
           created_at: createdAt,
-          batch_id: batchId
+          batch_id: batchId,
+          user_id: req.user.id
         };
 
         qrCodes.push(qrCode);
@@ -375,7 +725,8 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
       id: batchId,
       name: batchName,
       total_count: results.length,
-      created_at: createdAt
+      created_at: createdAt,
+      user_id: req.user.id
     });
     await db.write();
 
@@ -397,14 +748,17 @@ app.post('/api/qr/batch', upload.single('file'), async (req, res) => {
   }
 });
 
-// QR 코드 히스토리 조회
-app.get('/api/qr/history', async (req, res) => {
+// QR 코드 히스토리 조회 (로그인 필수, 본인 것만 조회)
+app.get('/api/qr/history', authenticate, async (req, res) => {
   try {
     const { page = 1, limit = 20, type } = req.query;
     const offset = (page - 1) * limit;
 
     await db.read();
-    let items = [...db.data.qr_codes];
+    // 관리자는 전체 조회, 일반 사용자는 본인 것만
+    let items = req.user.role === 'admin'
+      ? [...db.data.qr_codes]
+      : db.data.qr_codes.filter(qr => qr.user_id === req.user.id);
 
     if (type) {
       items = items.filter(qr => qr.type === type);
@@ -431,8 +785,8 @@ app.get('/api/qr/history', async (req, res) => {
   }
 });
 
-// 단일 QR 코드 조회
-app.get('/api/qr/:id', async (req, res) => {
+// 단일 QR 코드 조회 (로그인 필수, 본인 것만)
+app.get('/api/qr/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     await db.read();
@@ -442,6 +796,11 @@ app.get('/api/qr/:id', async (req, res) => {
       return res.status(404).json({ error: 'QR 코드를 찾을 수 없습니다.' });
     }
 
+    // 본인 것이거나 관리자만 조회 가능
+    if (qr.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: '접근 권한이 없습니다.' });
+    }
+
     res.json(qr);
   } catch (error) {
     console.error('QR 조회 오류:', error);
@@ -449,8 +808,8 @@ app.get('/api/qr/:id', async (req, res) => {
   }
 });
 
-// QR 코드 삭제
-app.delete('/api/qr/:id', async (req, res) => {
+// QR 코드 삭제 (로그인 필수, 본인 것만)
+app.delete('/api/qr/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     await db.read();
@@ -458,6 +817,12 @@ app.delete('/api/qr/:id', async (req, res) => {
     const index = db.data.qr_codes.findIndex(q => q.id === id);
     if (index === -1) {
       return res.status(404).json({ error: 'QR 코드를 찾을 수 없습니다.' });
+    }
+
+    const qr = db.data.qr_codes[index];
+    // 본인 것이거나 관리자만 삭제 가능
+    if (qr.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: '삭제 권한이 없습니다.' });
     }
 
     db.data.qr_codes.splice(index, 1);
@@ -470,13 +835,16 @@ app.delete('/api/qr/:id', async (req, res) => {
   }
 });
 
-// 배치 작업 목록 조회
-app.get('/api/batches', async (req, res) => {
+// 배치 작업 목록 조회 (로그인 필수, 본인 것만)
+app.get('/api/batches', authenticate, async (req, res) => {
   try {
     await db.read();
-    const batches = [...db.data.batch_jobs].sort(
-      (a, b) => new Date(b.created_at) - new Date(a.created_at)
-    );
+    // 관리자는 전체, 일반 사용자는 본인 것만
+    let batches = req.user.role === 'admin'
+      ? [...db.data.batch_jobs]
+      : db.data.batch_jobs.filter(b => b.user_id === req.user.id);
+
+    batches.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     res.json(batches);
   } catch (error) {
     console.error('배치 목록 조회 오류:', error);
@@ -484,8 +852,8 @@ app.get('/api/batches', async (req, res) => {
   }
 });
 
-// 배치 작업 상세 조회
-app.get('/api/batches/:id', async (req, res) => {
+// 배치 작업 상세 조회 (로그인 필수, 본인 것만)
+app.get('/api/batches/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     await db.read();
@@ -495,11 +863,168 @@ app.get('/api/batches/:id', async (req, res) => {
       return res.status(404).json({ error: '배치 작업을 찾을 수 없습니다.' });
     }
 
+    // 본인 것이거나 관리자만 조회 가능
+    if (batch.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: '접근 권한이 없습니다.' });
+    }
+
     const items = db.data.qr_codes.filter(qr => qr.batch_id === id);
     res.json({ ...batch, items });
   } catch (error) {
     console.error('배치 상세 조회 오류:', error);
     res.status(500).json({ error: '배치 상세 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 멀티 vCard 다운로드 - 배치의 모든 연락처를 하나의 .vcf 파일로 다운로드
+app.get('/api/batches/:id/vcf', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.read();
+
+    const batch = db.data.batch_jobs.find(b => b.id === id);
+    if (!batch) {
+      return res.status(404).json({ error: '배치 작업을 찾을 수 없습니다.' });
+    }
+
+    if (batch.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: '접근 권한이 없습니다.' });
+    }
+
+    // vCard 타입 배치만 지원
+    if (batch.type !== 'vcard') {
+      return res.status(400).json({ error: 'vCard 타입 배치만 VCF 다운로드가 가능합니다.' });
+    }
+
+    const items = db.data.qr_codes.filter(qr => qr.batch_id === id);
+
+    if (items.length === 0) {
+      return res.status(404).json({ error: '연락처가 없습니다.' });
+    }
+
+    // 모든 연락처를 하나의 VCF 파일로 결합
+    let vcfContent = '';
+
+    for (const item of items) {
+      const data = item.data || {};
+
+      // vCard 3.0 형식
+      let vcard = 'BEGIN:VCARD\r\n';
+      vcard += 'VERSION:3.0\r\n';
+
+      // 이름 (FN: 전체 이름, N: 구조화된 이름)
+      const name = data.name || data.이름 || '이름없음';
+      vcard += `FN:${name}\r\n`;
+      vcard += `N:${name};;;;\r\n`;
+
+      // 전화번호
+      const tel = data.tel || data.phone || data.전화번호 || '';
+      if (tel) {
+        vcard += `TEL;TYPE=CELL:${tel}\r\n`;
+      }
+
+      // 이메일
+      const email = data.email || data.이메일 || '';
+      if (email) {
+        vcard += `EMAIL:${email}\r\n`;
+      }
+
+      // 회사
+      const org = data.org || data.company || data.회사 || '';
+      if (org) {
+        vcard += `ORG:${org}\r\n`;
+      }
+
+      // 직책
+      const title = data.title || data.직책 || '';
+      if (title) {
+        vcard += `TITLE:${title}\r\n`;
+      }
+
+      // 주소
+      const addr = data.address || data.주소 || '';
+      if (addr) {
+        vcard += `ADR;TYPE=WORK:;;${addr};;;;\r\n`;
+      }
+
+      // 메모
+      const note = data.note || data.메모 || '';
+      if (note) {
+        vcard += `NOTE:${note}\r\n`;
+      }
+
+      // 웹사이트
+      const url = data.url || data.website || '';
+      if (url) {
+        vcard += `URL:${url}\r\n`;
+      }
+
+      vcard += 'END:VCARD\r\n';
+      vcfContent += vcard;
+    }
+
+    // 파일명 생성 (한글 지원)
+    const fileName = `${batch.name.replace(/\.[^/.]+$/, '')}_연락처_${items.length}명.vcf`;
+    const encodedFileName = encodeURIComponent(fileName);
+
+    res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`);
+    res.send(vcfContent);
+
+  } catch (error) {
+    console.error('VCF 다운로드 오류:', error);
+    res.status(500).json({ error: 'VCF 파일 생성 중 오류가 발생했습니다.' });
+  }
+});
+
+// 개별 연락처 vCard 다운로드
+app.get('/api/qr/:id/vcf', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.read();
+
+    const qrCode = db.data.qr_codes.find(qr => qr.id === id);
+    if (!qrCode) {
+      return res.status(404).json({ error: 'QR코드를 찾을 수 없습니다.' });
+    }
+
+    if (qrCode.type !== 'vcard') {
+      return res.status(400).json({ error: 'vCard 타입 QR코드만 VCF 다운로드가 가능합니다.' });
+    }
+
+    const data = qrCode.data || {};
+
+    let vcard = 'BEGIN:VCARD\r\n';
+    vcard += 'VERSION:3.0\r\n';
+
+    const name = data.name || data.이름 || '이름없음';
+    vcard += `FN:${name}\r\n`;
+    vcard += `N:${name};;;;\r\n`;
+
+    const tel = data.tel || data.phone || data.전화번호 || '';
+    if (tel) vcard += `TEL;TYPE=CELL:${tel}\r\n`;
+
+    const email = data.email || data.이메일 || '';
+    if (email) vcard += `EMAIL:${email}\r\n`;
+
+    const org = data.org || data.company || data.회사 || '';
+    if (org) vcard += `ORG:${org}\r\n`;
+
+    const title = data.title || data.직책 || '';
+    if (title) vcard += `TITLE:${title}\r\n`;
+
+    vcard += 'END:VCARD\r\n';
+
+    const fileName = `${name}.vcf`;
+    const encodedFileName = encodeURIComponent(fileName);
+
+    res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`);
+    res.send(vcard);
+
+  } catch (error) {
+    console.error('개별 VCF 다운로드 오류:', error);
+    res.status(500).json({ error: 'VCF 파일 생성 중 오류가 발생했습니다.' });
   }
 });
 
@@ -559,12 +1084,20 @@ app.get('/api/templates/:type', (req, res) => {
   res.send(buffer);
 });
 
-// 통계 API
-app.get('/api/stats', async (req, res) => {
+// 통계 API (로그인 필수, 본인 것만)
+app.get('/api/stats', authenticate, async (req, res) => {
   try {
     await db.read();
 
-    const qrCodes = db.data.qr_codes;
+    // 관리자는 전체, 일반 사용자는 본인 것만
+    const qrCodes = req.user.role === 'admin'
+      ? db.data.qr_codes
+      : db.data.qr_codes.filter(qr => qr.user_id === req.user.id);
+
+    const batchJobs = req.user.role === 'admin'
+      ? db.data.batch_jobs
+      : db.data.batch_jobs.filter(b => b.user_id === req.user.id);
+
     const totalQRs = qrCodes.length;
 
     // 타입별 통계
@@ -583,7 +1116,7 @@ app.get('/api/stats', async (req, res) => {
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 5);
 
-    const totalBatches = db.data.batch_jobs.length;
+    const totalBatches = batchJobs.length;
 
     res.json({
       totalQRs,
@@ -596,6 +1129,1096 @@ app.get('/api/stats', async (req, res) => {
     res.status(500).json({ error: '통계 조회 중 오류가 발생했습니다.' });
   }
 });
+
+// ========== 관리자 전용 API ==========
+
+// 전체 사용자 목록 조회 (관리자 전용)
+app.get('/api/admin/users', authenticate, requireAdmin, async (req, res) => {
+  try {
+    await db.read();
+    const users = db.data.users.map(u => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      created_at: u.created_at
+    }));
+    res.json(users);
+  } catch (error) {
+    console.error('사용자 목록 조회 오류:', error);
+    res.status(500).json({ error: '사용자 목록 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 사용자 역할 변경 (관리자 전용)
+app.patch('/api/admin/users/:id/role', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!['user', 'admin'].includes(role)) {
+      return res.status(400).json({ error: '유효하지 않은 역할입니다.' });
+    }
+
+    await db.read();
+    const user = db.data.users.find(u => u.id === id);
+    if (!user) {
+      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    }
+
+    user.role = role;
+    await db.write();
+
+    res.json({ message: '역할이 변경되었습니다.', user: { id: user.id, email: user.email, name: user.name, role: user.role } });
+  } catch (error) {
+    console.error('역할 변경 오류:', error);
+    res.status(500).json({ error: '역할 변경 중 오류가 발생했습니다.' });
+  }
+});
+
+// 사용자 삭제 (관리자 전용)
+app.delete('/api/admin/users/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (id === req.user.id) {
+      return res.status(400).json({ error: '자기 자신은 삭제할 수 없습니다.' });
+    }
+
+    await db.read();
+    const index = db.data.users.findIndex(u => u.id === id);
+    if (index === -1) {
+      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    }
+
+    // 사용자의 QR코드도 함께 삭제
+    db.data.qr_codes = db.data.qr_codes.filter(qr => qr.user_id !== id);
+    db.data.batch_jobs = db.data.batch_jobs.filter(b => b.user_id !== id);
+    db.data.users.splice(index, 1);
+    await db.write();
+
+    res.json({ success: true, message: '사용자가 삭제되었습니다.' });
+  } catch (error) {
+    console.error('사용자 삭제 오류:', error);
+    res.status(500).json({ error: '사용자 삭제 중 오류가 발생했습니다.' });
+  }
+});
+
+// 전체 통계 (관리자 전용)
+app.get('/api/admin/stats', authenticate, requireAdmin, async (req, res) => {
+  try {
+    await db.read();
+
+    const totalUsers = db.data.users.length;
+    const totalQRs = db.data.qr_codes.length;
+    const totalBatches = db.data.batch_jobs.length;
+
+    // 사용자별 QR 생성 통계
+    const userStats = {};
+    db.data.qr_codes.forEach(qr => {
+      userStats[qr.user_id] = (userStats[qr.user_id] || 0) + 1;
+    });
+
+    const userStatsArray = Object.entries(userStats).map(([userId, count]) => {
+      const user = db.data.users.find(u => u.id === userId);
+      return {
+        userId,
+        userName: user ? user.name : '알 수 없음',
+        userEmail: user ? user.email : '알 수 없음',
+        count
+      };
+    }).sort((a, b) => b.count - a.count);
+
+    res.json({
+      totalUsers,
+      totalQRs,
+      totalBatches,
+      userStats: userStatsArray
+    });
+  } catch (error) {
+    console.error('관리자 통계 조회 오류:', error);
+    res.status(500).json({ error: '통계 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 사용자에게 무료 구독 기간 부여 (관리자 전용)
+app.post('/api/admin/users/:id/grant-subscription', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { plan, months, reason } = req.body;
+
+    if (!plan || !months) {
+      return res.status(400).json({ error: '요금제와 기간을 입력해주세요.' });
+    }
+
+    if (!PLANS[plan]) {
+      return res.status(400).json({ error: '유효하지 않은 요금제입니다.' });
+    }
+
+    if (months < 1 || months > 24) {
+      return res.status(400).json({ error: '기간은 1~24개월 사이로 입력해주세요.' });
+    }
+
+    await db.read();
+
+    const user = db.data.users.find(u => u.id === id);
+    if (!user) {
+      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    }
+
+    // 기존 구독 만료 처리
+    const existingSubscription = db.data.subscriptions.find(
+      s => s.user_id === id && s.status === 'active'
+    );
+    if (existingSubscription) {
+      existingSubscription.status = 'cancelled';
+      existingSubscription.cancelled_at = new Date().toISOString();
+    }
+
+    // 새 무료 구독 생성
+    const now = new Date();
+    const expiresAt = new Date(now);
+    expiresAt.setMonth(expiresAt.getMonth() + parseInt(months));
+
+    const newSubscription = {
+      id: uuidv4(),
+      user_id: id,
+      plan: plan,
+      billing_cycle: 'admin_grant',
+      status: 'active',
+      payment_key: null,
+      order_id: `ADMIN_GRANT_${Date.now()}`,
+      amount: 0,
+      starts_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      auto_renew: false,
+      created_at: now.toISOString(),
+      granted_by: req.user.id,
+      grant_reason: reason || '관리자 부여'
+    };
+
+    db.data.subscriptions.push(newSubscription);
+    await db.write();
+
+    res.json({
+      success: true,
+      message: `${user.name}님에게 ${PLANS[plan].name} 요금제 ${months}개월이 부여되었습니다.`,
+      subscription: newSubscription
+    });
+  } catch (error) {
+    console.error('구독 부여 오류:', error);
+    res.status(500).json({ error: '구독 부여 중 오류가 발생했습니다.' });
+  }
+});
+
+// 단체(팀) 구독 생성 (관리자 전용)
+app.post('/api/admin/team-subscription', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { teamName, plan, months, memberEmails, discount } = req.body;
+
+    if (!teamName || !plan || !months || !memberEmails || memberEmails.length === 0) {
+      return res.status(400).json({ error: '팀 이름, 요금제, 기간, 멤버 이메일을 입력해주세요.' });
+    }
+
+    if (!PLANS[plan]) {
+      return res.status(400).json({ error: '유효하지 않은 요금제입니다.' });
+    }
+
+    await db.read();
+
+    const results = {
+      success: [],
+      notFound: [],
+      alreadyActive: []
+    };
+
+    const now = new Date();
+    const expiresAt = new Date(now);
+    expiresAt.setMonth(expiresAt.getMonth() + parseInt(months));
+
+    for (const email of memberEmails) {
+      const user = db.data.users.find(u => u.email === email.trim().toLowerCase());
+
+      if (!user) {
+        results.notFound.push(email);
+        continue;
+      }
+
+      // 기존 활성 구독 확인
+      const existingSubscription = db.data.subscriptions.find(
+        s => s.user_id === user.id && s.status === 'active'
+      );
+
+      if (existingSubscription) {
+        existingSubscription.status = 'cancelled';
+        existingSubscription.cancelled_at = now.toISOString();
+      }
+
+      // 새 구독 생성
+      const newSubscription = {
+        id: uuidv4(),
+        user_id: user.id,
+        plan: plan,
+        billing_cycle: 'team',
+        status: 'active',
+        payment_key: null,
+        order_id: `TEAM_${teamName}_${Date.now()}`,
+        amount: 0,
+        starts_at: now.toISOString(),
+        expires_at: expiresAt.toISOString(),
+        auto_renew: false,
+        created_at: now.toISOString(),
+        team_name: teamName,
+        granted_by: req.user.id,
+        discount_percent: discount || 0
+      };
+
+      db.data.subscriptions.push(newSubscription);
+      results.success.push({ email, userName: user.name });
+    }
+
+    await db.write();
+
+    // 단체 가격 계산
+    const basePrice = PLANS[plan].monthlyPrice * months * results.success.length;
+    const discountAmount = basePrice * (discount || 0) / 100;
+    const finalPrice = basePrice - discountAmount;
+
+    res.json({
+      success: true,
+      message: `${teamName} 팀 구독이 생성되었습니다.`,
+      teamName,
+      plan: PLANS[plan].name,
+      months,
+      results,
+      pricing: {
+        memberCount: results.success.length,
+        basePrice,
+        discountPercent: discount || 0,
+        discountAmount,
+        finalPrice
+      }
+    });
+  } catch (error) {
+    console.error('팀 구독 생성 오류:', error);
+    res.status(500).json({ error: '팀 구독 생성 중 오류가 발생했습니다.' });
+  }
+});
+
+// 프로모션 코드 생성 (관리자 전용)
+app.post('/api/admin/promo-codes', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { code, plan, months, maxUses, expiresAt, description } = req.body;
+
+    if (!code || !plan || !months) {
+      return res.status(400).json({ error: '코드, 요금제, 기간을 입력해주세요.' });
+    }
+
+    await db.read();
+
+    // promo_codes 배열이 없으면 생성
+    if (!db.data.promo_codes) {
+      db.data.promo_codes = [];
+    }
+
+    // 중복 코드 확인
+    const existingCode = db.data.promo_codes.find(p => p.code === code.toUpperCase());
+    if (existingCode) {
+      return res.status(400).json({ error: '이미 존재하는 프로모션 코드입니다.' });
+    }
+
+    const promoCode = {
+      id: uuidv4(),
+      code: code.toUpperCase(),
+      plan,
+      months: parseInt(months),
+      max_uses: maxUses || null,
+      used_count: 0,
+      expires_at: expiresAt || null,
+      description: description || '',
+      created_at: new Date().toISOString(),
+      created_by: req.user.id,
+      is_active: true
+    };
+
+    db.data.promo_codes.push(promoCode);
+    await db.write();
+
+    res.json({
+      success: true,
+      message: '프로모션 코드가 생성되었습니다.',
+      promoCode
+    });
+  } catch (error) {
+    console.error('프로모션 코드 생성 오류:', error);
+    res.status(500).json({ error: '프로모션 코드 생성 중 오류가 발생했습니다.' });
+  }
+});
+
+// 프로모션 코드 목록 (관리자 전용)
+app.get('/api/admin/promo-codes', authenticate, requireAdmin, async (req, res) => {
+  try {
+    await db.read();
+    const promoCodes = db.data.promo_codes || [];
+    res.json(promoCodes);
+  } catch (error) {
+    console.error('프로모션 코드 목록 조회 오류:', error);
+    res.status(500).json({ error: '프로모션 코드 목록 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 프로모션 코드 사용 (사용자)
+app.post('/api/promo-codes/redeem', authenticate, async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ error: '프로모션 코드를 입력해주세요.' });
+    }
+
+    await db.read();
+
+    if (!db.data.promo_codes) {
+      return res.status(404).json({ error: '유효하지 않은 프로모션 코드입니다.' });
+    }
+
+    const promoCode = db.data.promo_codes.find(p => p.code === code.toUpperCase() && p.is_active);
+
+    if (!promoCode) {
+      return res.status(404).json({ error: '유효하지 않은 프로모션 코드입니다.' });
+    }
+
+    // 만료 확인
+    if (promoCode.expires_at && new Date(promoCode.expires_at) < new Date()) {
+      return res.status(400).json({ error: '만료된 프로모션 코드입니다.' });
+    }
+
+    // 사용 횟수 확인
+    if (promoCode.max_uses && promoCode.used_count >= promoCode.max_uses) {
+      return res.status(400).json({ error: '사용 한도를 초과한 프로모션 코드입니다.' });
+    }
+
+    // 이미 사용한 사용자인지 확인
+    if (!db.data.promo_code_uses) {
+      db.data.promo_code_uses = [];
+    }
+
+    const alreadyUsed = db.data.promo_code_uses.find(
+      u => u.promo_code_id === promoCode.id && u.user_id === req.user.id
+    );
+
+    if (alreadyUsed) {
+      return res.status(400).json({ error: '이미 사용한 프로모션 코드입니다.' });
+    }
+
+    // 기존 구독 만료 처리
+    const existingSubscription = db.data.subscriptions.find(
+      s => s.user_id === req.user.id && s.status === 'active'
+    );
+    if (existingSubscription) {
+      existingSubscription.status = 'cancelled';
+      existingSubscription.cancelled_at = new Date().toISOString();
+    }
+
+    // 새 구독 생성
+    const now = new Date();
+    const expiresAt = new Date(now);
+    expiresAt.setMonth(expiresAt.getMonth() + promoCode.months);
+
+    const newSubscription = {
+      id: uuidv4(),
+      user_id: req.user.id,
+      plan: promoCode.plan,
+      billing_cycle: 'promo',
+      status: 'active',
+      payment_key: null,
+      order_id: `PROMO_${promoCode.code}_${Date.now()}`,
+      amount: 0,
+      starts_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      auto_renew: false,
+      created_at: now.toISOString(),
+      promo_code: promoCode.code
+    };
+
+    db.data.subscriptions.push(newSubscription);
+
+    // 사용 기록 추가
+    db.data.promo_code_uses.push({
+      id: uuidv4(),
+      promo_code_id: promoCode.id,
+      user_id: req.user.id,
+      used_at: now.toISOString()
+    });
+
+    // 사용 횟수 증가
+    promoCode.used_count++;
+
+    await db.write();
+
+    res.json({
+      success: true,
+      message: `${PLANS[promoCode.plan].name} 요금제 ${promoCode.months}개월이 적용되었습니다!`,
+      subscription: newSubscription
+    });
+  } catch (error) {
+    console.error('프로모션 코드 사용 오류:', error);
+    res.status(500).json({ error: '프로모션 코드 사용 중 오류가 발생했습니다.' });
+  }
+});
+
+// ========== 결제 API (토스페이먼츠) ==========
+
+// 요금제 목록 조회
+app.get('/api/plans', (req, res) => {
+  res.json(PLANS);
+});
+
+// 내 구독 정보 조회
+app.get('/api/subscription', authenticate, async (req, res) => {
+  try {
+    const plan = await getUserSubscription(req.user.id);
+    const monthlyCount = await getMonthlyQRCount(req.user.id);
+    const planInfo = PLANS[plan];
+
+    await db.read();
+    const subscription = db.data.subscriptions.find(s =>
+      s.user_id === req.user.id && s.status === 'active'
+    );
+
+    res.json({
+      plan,
+      planName: planInfo.name,
+      monthlyLimit: planInfo.monthlyLimit,
+      monthlyCount,
+      remaining: planInfo.monthlyLimit === -1 ? '무제한' : planInfo.monthlyLimit - monthlyCount,
+      maxSize: planInfo.maxSize,
+      features: planInfo.features,
+      subscription: subscription ? {
+        expiresAt: subscription.expires_at,
+        billingCycle: subscription.billing_cycle,
+        autoRenew: subscription.auto_renew
+      } : null
+    });
+  } catch (error) {
+    console.error('구독 정보 조회 오류:', error);
+    res.status(500).json({ error: '구독 정보 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 결제 요청 준비 (주문 생성)
+app.post('/api/payments/prepare', authenticate, async (req, res) => {
+  try {
+    const { plan, billingCycle } = req.body; // billingCycle: 'monthly' or 'yearly'
+
+    if (!PLANS[plan] || plan === 'free') {
+      return res.status(400).json({ error: '유효하지 않은 요금제입니다.' });
+    }
+
+    const planInfo = PLANS[plan];
+    const amount = billingCycle === 'yearly' ? planInfo.yearlyPrice : planInfo.monthlyPrice;
+    const orderId = `ORDER_${req.user.id}_${Date.now()}`;
+    const orderName = `QR코드 생성기 ${planInfo.name} (${billingCycle === 'yearly' ? '연간' : '월간'})`;
+
+    // 주문 정보 임시 저장
+    await db.read();
+    db.data.payments.push({
+      id: orderId,
+      user_id: req.user.id,
+      plan,
+      billing_cycle: billingCycle,
+      amount,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    });
+    await db.write();
+
+    res.json({
+      orderId,
+      orderName,
+      amount,
+      customerEmail: req.user.email,
+      customerName: req.user.name,
+      clientKey: TOSS_CLIENT_KEY,
+      successUrl: `${APP_URL}/payment/success`,
+      failUrl: `${APP_URL}/payment/fail`
+    });
+  } catch (error) {
+    console.error('결제 준비 오류:', error);
+    res.status(500).json({ error: '결제 준비 중 오류가 발생했습니다.' });
+  }
+});
+
+// 결제 승인 (토스페이먼츠 콜백)
+app.post('/api/payments/confirm', authenticate, async (req, res) => {
+  try {
+    const { paymentKey, orderId, amount } = req.body;
+
+    // 주문 정보 확인
+    await db.read();
+    const payment = db.data.payments.find(p => p.id === orderId && p.user_id === req.user.id);
+    if (!payment) {
+      return res.status(400).json({ error: '주문 정보를 찾을 수 없습니다.' });
+    }
+
+    if (payment.amount !== amount) {
+      return res.status(400).json({ error: '결제 금액이 일치하지 않습니다.' });
+    }
+
+    // 토스페이먼츠 결제 승인 API 호출
+    const confirmResponse = await axios.post(
+      'https://api.tosspayments.com/v1/payments/confirm',
+      { paymentKey, orderId, amount },
+      {
+        headers: {
+          Authorization: `Basic ${Buffer.from(TOSS_SECRET_KEY + ':').toString('base64')}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    // 결제 성공 - 구독 활성화
+    const now = new Date();
+    const expiresAt = new Date(now);
+    if (payment.billing_cycle === 'yearly') {
+      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    } else {
+      expiresAt.setMonth(expiresAt.getMonth() + 1);
+    }
+
+    // 기존 구독 비활성화
+    db.data.subscriptions.forEach(s => {
+      if (s.user_id === req.user.id) {
+        s.status = 'inactive';
+      }
+    });
+
+    // 새 구독 추가
+    db.data.subscriptions.push({
+      id: uuidv4(),
+      user_id: req.user.id,
+      plan: payment.plan,
+      billing_cycle: payment.billing_cycle,
+      status: 'active',
+      payment_key: paymentKey,
+      starts_at: now.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      auto_renew: true,
+      created_at: now.toISOString()
+    });
+
+    // 결제 상태 업데이트
+    payment.status = 'completed';
+    payment.payment_key = paymentKey;
+    payment.completed_at = now.toISOString();
+
+    await db.write();
+
+    res.json({
+      success: true,
+      message: '결제가 완료되었습니다.',
+      subscription: {
+        plan: payment.plan,
+        expiresAt: expiresAt.toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('결제 승인 오류:', error.response?.data || error.message);
+
+    // 결제 실패 처리
+    if (error.response?.data) {
+      return res.status(400).json({
+        error: '결제 승인에 실패했습니다.',
+        details: error.response.data.message
+      });
+    }
+    res.status(500).json({ error: '결제 승인 중 오류가 발생했습니다.' });
+  }
+});
+
+// 결제 내역 조회
+app.get('/api/payments/history', authenticate, async (req, res) => {
+  try {
+    await db.read();
+    const payments = db.data.payments
+      .filter(p => p.user_id === req.user.id && p.status === 'completed')
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    res.json(payments);
+  } catch (error) {
+    console.error('결제 내역 조회 오류:', error);
+    res.status(500).json({ error: '결제 내역 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// ========== 다이나믹 QR코드 API ==========
+
+// 다이나믹 QR 생성 (비즈니스 플랜)
+app.post('/api/qr/dynamic', authenticate, checkPremiumFeature('dynamic_qr'), async (req, res) => {
+  try {
+    const { name, targetUrl, options = {} } = req.body;
+
+    if (!targetUrl) {
+      return res.status(400).json({ error: '대상 URL을 입력해주세요.' });
+    }
+
+    const id = uuidv4();
+    const shortCode = id.slice(0, 8);
+    const dynamicUrl = `${APP_URL}/r/${shortCode}`;
+
+    const qrOptions = {
+      errorCorrectionLevel: options.errorCorrectionLevel || 'M',
+      type: 'image/png',
+      quality: 0.92,
+      margin: options.margin || 2,
+      color: {
+        dark: options.darkColor || '#000000',
+        light: options.lightColor || '#FFFFFF'
+      },
+      width: Math.min(options.size || 300, PLANS[req.userPlan].maxSize)
+    };
+
+    const dataUrl = await QRCode.toDataURL(dynamicUrl, qrOptions);
+    const createdAt = new Date().toISOString();
+
+    // 다이나믹 QR 정보 저장
+    const dynamicQR = {
+      id,
+      short_code: shortCode,
+      user_id: req.user.id,
+      name: name || `dynamic-${shortCode}`,
+      target_url: targetUrl,
+      dynamic_url: dynamicUrl,
+      data_url: dataUrl,
+      scan_count: 0,
+      is_active: true,
+      created_at: createdAt,
+      updated_at: createdAt
+    };
+
+    await db.read();
+    db.data.dynamic_qr.push(dynamicQR);
+    await db.write();
+
+    res.json({
+      id,
+      shortCode,
+      name: dynamicQR.name,
+      targetUrl,
+      dynamicUrl,
+      dataUrl,
+      createdAt
+    });
+  } catch (error) {
+    console.error('다이나믹 QR 생성 오류:', error);
+    res.status(500).json({ error: '다이나믹 QR 생성 중 오류가 발생했습니다.' });
+  }
+});
+
+// 다이나믹 QR 대상 URL 수정
+app.patch('/api/qr/dynamic/:id', authenticate, checkPremiumFeature('dynamic_qr'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { targetUrl, name, isActive } = req.body;
+
+    await db.read();
+    const dynamicQR = db.data.dynamic_qr.find(d => d.id === id && d.user_id === req.user.id);
+
+    if (!dynamicQR) {
+      return res.status(404).json({ error: '다이나믹 QR을 찾을 수 없습니다.' });
+    }
+
+    if (targetUrl) dynamicQR.target_url = targetUrl;
+    if (name) dynamicQR.name = name;
+    if (typeof isActive === 'boolean') dynamicQR.is_active = isActive;
+    dynamicQR.updated_at = new Date().toISOString();
+
+    await db.write();
+
+    res.json({
+      success: true,
+      message: '다이나믹 QR이 수정되었습니다.',
+      dynamicQR
+    });
+  } catch (error) {
+    console.error('다이나믹 QR 수정 오류:', error);
+    res.status(500).json({ error: '다이나믹 QR 수정 중 오류가 발생했습니다.' });
+  }
+});
+
+// 다이나믹 QR 목록 조회
+app.get('/api/qr/dynamic', authenticate, async (req, res) => {
+  try {
+    await db.read();
+    const dynamicQRs = db.data.dynamic_qr
+      .filter(d => d.user_id === req.user.id)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    res.json(dynamicQRs);
+  } catch (error) {
+    console.error('다이나믹 QR 목록 조회 오류:', error);
+    res.status(500).json({ error: '다이나믹 QR 목록 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// 다이나믹 QR 리다이렉트 (공개 - 스캔 시 호출)
+app.get('/r/:shortCode', async (req, res) => {
+  try {
+    const { shortCode } = req.params;
+
+    await db.read();
+    const dynamicQR = db.data.dynamic_qr.find(d => d.short_code === shortCode);
+
+    if (!dynamicQR || !dynamicQR.is_active) {
+      return res.status(404).send('QR코드를 찾을 수 없거나 비활성화되었습니다.');
+    }
+
+    // 스캔 기록
+    dynamicQR.scan_count = (dynamicQR.scan_count || 0) + 1;
+
+    db.data.qr_scans.push({
+      id: uuidv4(),
+      qr_id: dynamicQR.id,
+      user_id: dynamicQR.user_id,
+      user_agent: req.headers['user-agent'] || '',
+      ip: req.ip || req.connection.remoteAddress,
+      referer: req.headers.referer || '',
+      scanned_at: new Date().toISOString()
+    });
+
+    await db.write();
+
+    res.redirect(dynamicQR.target_url);
+  } catch (error) {
+    console.error('QR 리다이렉트 오류:', error);
+    res.status(500).send('오류가 발생했습니다.');
+  }
+});
+
+// ========== 스캔 분석 API ==========
+
+// 스캔 통계 조회 (프로 플랜 이상)
+app.get('/api/analytics/scans', authenticate, checkPremiumFeature('analytics'), async (req, res) => {
+  try {
+    const { period = '7d', qrId } = req.query;
+
+    await db.read();
+
+    // 기간 계산
+    const now = new Date();
+    let startDate = new Date();
+    switch(period) {
+      case '24h': startDate.setHours(startDate.getHours() - 24); break;
+      case '7d': startDate.setDate(startDate.getDate() - 7); break;
+      case '30d': startDate.setDate(startDate.getDate() - 30); break;
+      case '90d': startDate.setDate(startDate.getDate() - 90); break;
+      default: startDate.setDate(startDate.getDate() - 7);
+    }
+
+    let scans = db.data.qr_scans.filter(s =>
+      s.user_id === req.user.id &&
+      new Date(s.scanned_at) >= startDate
+    );
+
+    if (qrId) {
+      scans = scans.filter(s => s.qr_id === qrId);
+    }
+
+    // 일별 통계
+    const dailyStats = {};
+    scans.forEach(scan => {
+      const date = scan.scanned_at.split('T')[0];
+      dailyStats[date] = (dailyStats[date] || 0) + 1;
+    });
+
+    // 기기별 통계 (User-Agent 파싱)
+    const deviceStats = { mobile: 0, desktop: 0, tablet: 0, other: 0 };
+    scans.forEach(scan => {
+      const ua = scan.user_agent.toLowerCase();
+      if (/mobile|android|iphone/.test(ua)) deviceStats.mobile++;
+      else if (/tablet|ipad/.test(ua)) deviceStats.tablet++;
+      else if (/windows|mac|linux/.test(ua)) deviceStats.desktop++;
+      else deviceStats.other++;
+    });
+
+    res.json({
+      totalScans: scans.length,
+      period,
+      dailyStats: Object.entries(dailyStats).map(([date, count]) => ({ date, count })),
+      deviceStats
+    });
+  } catch (error) {
+    console.error('스캔 통계 조회 오류:', error);
+    res.status(500).json({ error: '스캔 통계 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+// ========== 고화질 QR 생성 API ==========
+
+// 고화질 QR 다운로드 (베이직 플랜 이상)
+app.post('/api/qr/high-resolution', authenticate, checkPremiumFeature('high_resolution'), async (req, res) => {
+  try {
+    const { qrId, size } = req.body;
+    const plan = await getUserSubscription(req.user.id);
+    const maxSize = PLANS[plan].maxSize;
+
+    const requestedSize = Math.min(size || 1000, maxSize);
+
+    await db.read();
+    const qr = db.data.qr_codes.find(q => q.id === qrId && q.user_id === req.user.id);
+
+    if (!qr) {
+      return res.status(404).json({ error: 'QR 코드를 찾을 수 없습니다.' });
+    }
+
+    // 고화질로 재생성
+    const qrOptions = {
+      errorCorrectionLevel: 'H',
+      type: 'image/png',
+      quality: 1,
+      margin: 2,
+      width: requestedSize
+    };
+
+    const dataUrl = await QRCode.toDataURL(qr.content, qrOptions);
+
+    res.json({
+      dataUrl,
+      size: requestedSize,
+      maxSize
+    });
+  } catch (error) {
+    console.error('고화질 QR 생성 오류:', error);
+    res.status(500).json({ error: '고화질 QR 생성 중 오류가 발생했습니다.' });
+  }
+});
+
+// ========== 로고 삽입 QR API ==========
+
+// 로고 업로드용 multer 설정
+const logoStorage = multer.memoryStorage();
+const logoUpload = multer({
+  storage: logoStorage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB 제한
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('PNG, JPG, SVG 이미지만 업로드 가능합니다.'));
+    }
+  }
+});
+
+// 로고 삽입 QR 생성 (프로 플랜 이상)
+app.post('/api/qr/with-logo', authenticate, checkPremiumFeature('logo_insert'), logoUpload.single('logo'), async (req, res) => {
+  try {
+    const { type, data, name, options = {} } = req.body;
+    const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+    const parsedOptions = typeof options === 'string' ? JSON.parse(options) : options;
+
+    if (!req.file) {
+      return res.status(400).json({ error: '로고 이미지를 업로드해주세요.' });
+    }
+
+    const formatter = formatters[type];
+    if (!formatter) {
+      return res.status(400).json({ error: '지원하지 않는 QR 코드 타입입니다.' });
+    }
+
+    const content = formatter(parsedData);
+    if (!content) {
+      return res.status(400).json({ error: 'QR 코드 데이터가 올바르지 않습니다.' });
+    }
+
+    const plan = await getUserSubscription(req.user.id);
+    const maxSize = PLANS[plan].maxSize;
+    const qrSize = Math.min(parsedOptions.size || 500, maxSize);
+
+    // 로고 삽입 시 오류 정정 레벨을 H(30%)로 설정해야 함
+    const qrOptions = {
+      errorCorrectionLevel: 'H',
+      type: 'image/png',
+      quality: 1,
+      margin: parsedOptions.margin || 2,
+      color: {
+        dark: parsedOptions.darkColor || '#000000',
+        light: parsedOptions.lightColor || '#FFFFFF'
+      },
+      width: qrSize
+    };
+
+    // QR 코드 생성 (Buffer로)
+    const qrBuffer = await QRCode.toBuffer(content, qrOptions);
+
+    // 로고 크기 계산 (QR의 20-25% 정도가 적당)
+    const logoSize = Math.round(qrSize * 0.22);
+    const logoPosition = Math.round((qrSize - logoSize) / 2);
+
+    // 로고 이미지 리사이즈
+    const resizedLogo = await sharp(req.file.buffer)
+      .resize(logoSize, logoSize, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+      .png()
+      .toBuffer();
+
+    // 로고 배경 (흰색 원형/사각형)
+    const logoPadding = Math.round(logoSize * 0.1);
+    const logoWithBg = await sharp({
+      create: {
+        width: logoSize + logoPadding * 2,
+        height: logoSize + logoPadding * 2,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      }
+    })
+      .composite([{
+        input: resizedLogo,
+        top: logoPadding,
+        left: logoPadding
+      }])
+      .png()
+      .toBuffer();
+
+    // QR 코드 위에 로고 합성
+    const finalQR = await sharp(qrBuffer)
+      .composite([{
+        input: logoWithBg,
+        top: logoPosition - logoPadding,
+        left: logoPosition - logoPadding
+      }])
+      .png()
+      .toBuffer();
+
+    // Base64 Data URL로 변환
+    const dataUrl = `data:image/png;base64,${finalQR.toString('base64')}`;
+
+    const id = uuidv4();
+    const createdAt = new Date().toISOString();
+
+    // DB에 저장
+    const qrCode = {
+      id,
+      type,
+      name: name || `${type}-logo-${Date.now()}`,
+      content,
+      data_url: dataUrl,
+      has_logo: true,
+      created_at: createdAt,
+      user_id: req.user.id
+    };
+
+    await db.read();
+    db.data.qr_codes.push(qrCode);
+    await db.write();
+
+    res.json({
+      id,
+      type,
+      name: qrCode.name,
+      content,
+      dataUrl,
+      hasLogo: true,
+      createdAt
+    });
+  } catch (error) {
+    console.error('로고 QR 생성 오류:', error);
+    res.status(500).json({ error: '로고 QR 생성 중 오류가 발생했습니다: ' + error.message });
+  }
+});
+
+// 기존 QR에 로고 추가 (프로 플랜 이상)
+app.post('/api/qr/:id/add-logo', authenticate, checkPremiumFeature('logo_insert'), logoUpload.single('logo'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({ error: '로고 이미지를 업로드해주세요.' });
+    }
+
+    await db.read();
+    const qr = db.data.qr_codes.find(q => q.id === id && q.user_id === req.user.id);
+
+    if (!qr) {
+      return res.status(404).json({ error: 'QR 코드를 찾을 수 없습니다.' });
+    }
+
+    const plan = await getUserSubscription(req.user.id);
+    const maxSize = PLANS[plan].maxSize;
+    const qrSize = Math.min(parseInt(req.body.size) || 500, maxSize);
+
+    // QR 코드 재생성 (높은 오류 정정 레벨로)
+    const qrOptions = {
+      errorCorrectionLevel: 'H',
+      type: 'image/png',
+      quality: 1,
+      margin: 2,
+      width: qrSize
+    };
+
+    const qrBuffer = await QRCode.toBuffer(qr.content, qrOptions);
+
+    // 로고 크기 및 위치 계산
+    const logoSize = Math.round(qrSize * 0.22);
+    const logoPosition = Math.round((qrSize - logoSize) / 2);
+
+    // 로고 이미지 처리
+    const resizedLogo = await sharp(req.file.buffer)
+      .resize(logoSize, logoSize, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+      .png()
+      .toBuffer();
+
+    // 로고 배경
+    const logoPadding = Math.round(logoSize * 0.1);
+    const logoWithBg = await sharp({
+      create: {
+        width: logoSize + logoPadding * 2,
+        height: logoSize + logoPadding * 2,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      }
+    })
+      .composite([{
+        input: resizedLogo,
+        top: logoPadding,
+        left: logoPadding
+      }])
+      .png()
+      .toBuffer();
+
+    // 합성
+    const finalQR = await sharp(qrBuffer)
+      .composite([{
+        input: logoWithBg,
+        top: logoPosition - logoPadding,
+        left: logoPosition - logoPadding
+      }])
+      .png()
+      .toBuffer();
+
+    const dataUrl = `data:image/png;base64,${finalQR.toString('base64')}`;
+
+    res.json({
+      id: qr.id,
+      dataUrl,
+      size: qrSize,
+      hasLogo: true
+    });
+  } catch (error) {
+    console.error('로고 추가 오류:', error);
+    res.status(500).json({ error: '로고 추가 중 오류가 발생했습니다: ' + error.message });
+  }
+});
+
+// 프로덕션에서 React 빌드 파일 서빙
+const clientDistPath = path.join(__dirname, '../client/dist');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+
+  // API 라우트가 아닌 모든 요청을 React 앱으로 라우팅
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api/') && !req.path.startsWith('/uploads/')) {
+      res.sendFile(path.join(clientDistPath, 'index.html'));
+    }
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`🚀 QR 코드 생성기 서버가 http://localhost:${PORT} 에서 실행 중입니다.`);

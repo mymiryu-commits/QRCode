@@ -1,0 +1,14 @@
+# PlanX QR - robots.txt
+# https://30daysliving.com
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /payment/
+
+# Sitemap location
+Sitemap: https://30daysliving.com/sitemap.xml
+
+# Crawl-delay for polite crawling
+Crawl-delay: 1

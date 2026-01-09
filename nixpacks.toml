@@ -1,0 +1,12 @@
+# Railway/Nixpacks 빌드 설정
+[phases.setup]
+nixPkgs = ["nodejs_18"]
+
+[phases.install]
+cmds = ["npm install", "cd client && npm install"]
+
+[phases.build]
+cmds = ["cd client && npm run build"]
+
+[start]
+cmd = "npm start"
