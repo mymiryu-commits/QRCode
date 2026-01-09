@@ -503,7 +503,7 @@ export default function HomePage() {
               </div>
 
               {/* 곰 캐릭터 SVG */}
-              <div className="relative w-44 h-52 group-hover:scale-105 transition-transform duration-300 cursor-pointer">
+              <div className="relative w-48 h-60 group-hover:scale-105 transition-transform duration-300 cursor-pointer">
                 <svg viewBox="0 0 180 220" className="w-full h-full drop-shadow-lg">
                   {/* 귀 */}
                   <circle cx="45" cy="32" r="24" fill="#D4A574" />
@@ -532,22 +532,22 @@ export default function HomePage() {
                   <path d="M 80 95 Q 90 105 100 95" stroke="#3D2914" strokeWidth="2.5" fill="none" strokeLinecap="round" />
 
                   {/* 몸통 */}
-                  <ellipse cx="90" cy="168" rx="50" ry="46" fill="#D4A574" />
+                  <ellipse cx="90" cy="165" rx="50" ry="48" fill="#D4A574" />
 
                   {/* 배 (QR 영역) - 흰색 */}
-                  <ellipse cx="90" cy="168" rx="38" ry="35" fill="#FFF8F0" stroke="#E8D5C4" strokeWidth="2" />
+                  <ellipse cx="90" cy="165" rx="40" ry="38" fill="#FFF8F0" stroke="#E8D5C4" strokeWidth="2" />
 
                   {/* 손 */}
-                  <ellipse cx="38" cy="150" rx="12" ry="16" fill="#D4A574" transform="rotate(-20 38 150)" />
-                  <ellipse cx="142" cy="150" rx="12" ry="16" fill="#D4A574" transform="rotate(20 142 150)" />
+                  <ellipse cx="38" cy="148" rx="12" ry="16" fill="#D4A574" transform="rotate(-20 38 148)" />
+                  <ellipse cx="142" cy="148" rx="12" ry="16" fill="#D4A574" transform="rotate(20 142 148)" />
                 </svg>
 
                 {/* QR코드 - 곰 배 위에 */}
-                <div className="absolute top-[118px] left-1/2 -translate-x-1/2">
+                <div className="absolute top-[142px] left-1/2 -translate-x-1/2">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=tel:1588-5617&color=92400E&bgcolor=FFF8F0`}
                     alt="전화 QR코드"
-                    className="w-[60px] h-[60px] rounded"
+                    className="w-[62px] h-[62px] rounded"
                   />
                 </div>
               </div>
@@ -568,7 +568,7 @@ export default function HomePage() {
               </div>
 
               {/* 토끼 캐릭터 SVG */}
-              <div className="relative w-44 h-52 group-hover:scale-105 transition-transform duration-300 cursor-pointer">
+              <div className="relative w-48 h-60 group-hover:scale-105 transition-transform duration-300 cursor-pointer">
                 <svg viewBox="0 0 180 220" className="w-full h-full drop-shadow-lg">
                   {/* 귀 */}
                   <ellipse cx="55" cy="38" rx="16" ry="42" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="2" />
@@ -597,22 +597,22 @@ export default function HomePage() {
                   <line x1="90" y1="98" x2="90" y2="107" stroke="#3D2914" strokeWidth="1.5" />
 
                   {/* 몸통 */}
-                  <ellipse cx="90" cy="172" rx="45" ry="42" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="2" />
+                  <ellipse cx="90" cy="168" rx="46" ry="46" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="2" />
 
                   {/* 배 (QR 영역) */}
-                  <ellipse cx="90" cy="172" rx="35" ry="32" fill="white" stroke="#FFD1DC" strokeWidth="2" />
+                  <ellipse cx="90" cy="168" rx="38" ry="36" fill="white" stroke="#FFD1DC" strokeWidth="2" />
 
                   {/* 손 */}
-                  <ellipse cx="42" cy="155" rx="10" ry="14" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="1.5" transform="rotate(-15 42 155)" />
-                  <ellipse cx="138" cy="155" rx="10" ry="14" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="1.5" transform="rotate(15 138 155)" />
+                  <ellipse cx="42" cy="152" rx="10" ry="14" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="1.5" transform="rotate(-15 42 152)" />
+                  <ellipse cx="138" cy="152" rx="10" ry="14" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="1.5" transform="rotate(15 138 152)" />
                 </svg>
 
                 {/* QR코드 - 토끼 배 위에 */}
-                <div className="absolute top-[125px] left-1/2 -translate-x-1/2">
+                <div className="absolute top-[148px] left-1/2 -translate-x-1/2">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=mailto:mymiryu@gmail.com&color=DB2777&bgcolor=FFFFFF`}
                     alt="이메일 QR코드"
-                    className="w-[55px] h-[55px] rounded"
+                    className="w-[58px] h-[58px] rounded"
                   />
                 </div>
               </div>
@@ -633,7 +633,7 @@ export default function HomePage() {
               </div>
 
               {/* 고양이 캐릭터 SVG */}
-              <div className="relative w-44 h-52 group-hover:scale-105 transition-transform duration-300 cursor-pointer">
+              <div className="relative w-48 h-60 group-hover:scale-105 transition-transform duration-300 cursor-pointer">
                 <svg viewBox="0 0 180 220" className="w-full h-full drop-shadow-lg">
                   {/* 귀 */}
                   <polygon points="42,68 28,18 68,50" fill="#E9D5FF" stroke="#C084FC" strokeWidth="2" />
@@ -669,25 +669,25 @@ export default function HomePage() {
                   <path d="M 82 110 Q 86 115 90 110 Q 94 115 98 110" stroke="#3D2914" strokeWidth="2" fill="none" strokeLinecap="round" />
 
                   {/* 몸통 */}
-                  <ellipse cx="90" cy="172" rx="48" ry="44" fill="#E9D5FF" stroke="#C084FC" strokeWidth="2" />
+                  <ellipse cx="90" cy="168" rx="48" ry="46" fill="#E9D5FF" stroke="#C084FC" strokeWidth="2" />
 
                   {/* 배 (QR 영역) */}
-                  <ellipse cx="90" cy="172" rx="36" ry="34" fill="#FAF5FF" stroke="#DDD6FE" strokeWidth="2" />
+                  <ellipse cx="90" cy="168" rx="38" ry="36" fill="#FAF5FF" stroke="#DDD6FE" strokeWidth="2" />
 
                   {/* 손 */}
-                  <ellipse cx="40" cy="158" rx="10" ry="14" fill="#E9D5FF" stroke="#C084FC" strokeWidth="1.5" transform="rotate(-20 40 158)" />
-                  <ellipse cx="140" cy="158" rx="10" ry="14" fill="#E9D5FF" stroke="#C084FC" strokeWidth="1.5" transform="rotate(20 140 158)" />
+                  <ellipse cx="40" cy="152" rx="10" ry="14" fill="#E9D5FF" stroke="#C084FC" strokeWidth="1.5" transform="rotate(-20 40 152)" />
+                  <ellipse cx="140" cy="152" rx="10" ry="14" fill="#E9D5FF" stroke="#C084FC" strokeWidth="1.5" transform="rotate(20 140 152)" />
 
                   {/* 꼬리 */}
-                  <path d="M 138 190 Q 165 175 155 150" stroke="#C084FC" strokeWidth="8" fill="none" strokeLinecap="round" />
+                  <path d="M 138 185 Q 168 170 158 145" stroke="#C084FC" strokeWidth="8" fill="none" strokeLinecap="round" />
                 </svg>
 
                 {/* QR코드 - 고양이 배 위에 */}
-                <div className="absolute top-[122px] left-1/2 -translate-x-1/2">
+                <div className="absolute top-[148px] left-1/2 -translate-x-1/2">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent('BEGIN:VCARD\nVERSION:3.0\nFN:PlanX QR 고객센터\nTEL:1588-5617\nEMAIL:mymiryu@gmail.com\nURL:https://30daysliving.com\nEND:VCARD')}&color=7C3AED&bgcolor=FAF5FF`}
                     alt="연락처 저장 QR코드"
-                    className="w-[55px] h-[55px] rounded"
+                    className="w-[58px] h-[58px] rounded"
                   />
                 </div>
               </div>
