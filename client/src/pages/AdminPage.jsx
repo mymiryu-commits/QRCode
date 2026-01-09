@@ -6,7 +6,7 @@ import {
   Users, Shield, Trash2, BarChart3, QrCode,
   FolderOpen, AlertCircle, Check, Crown, Gift,
   Ticket, Building2, Calendar, X, Settings, Image,
-  Upload, Loader2, Save
+  Upload, Loader2, Save, Plus, Minus
 } from 'lucide-react'
 
 const PLANS = {
@@ -211,6 +211,44 @@ export default function AdminPage() {
       newFeatures[index] = { ...newFeatures[index], image: imageUrl }
       setSiteSettings(prev => ({ ...prev, premiumFeatures: newFeatures }))
     }
+    setImageSelector({ open: false, section: null, index: null })
+  }
+
+  // 섹션 항목 추가
+  const handleAddSectionItem = (sectionType) => {
+    if (sectionType === 'useCases') {
+      const newItem = { industry: '새 업종', title: '새 제목', description: '설명을 입력하세요.', image: '' }
+      setSiteSettings(prev => ({ ...prev, useCases: [...(prev.useCases || []), newItem] }))
+    } else if (sectionType === 'testimonials') {
+      const newItem = { name: '새 고객', role: '직책/회사', content: '후기 내용을 입력하세요.', image: '' }
+      setSiteSettings(prev => ({ ...prev, testimonials: [...(prev.testimonials || []), newItem] }))
+    } else if (sectionType === 'premiumFeatures') {
+      const newItem = { title: '새 기능', description: '기능 설명을 입력하세요.', image: '' }
+      setSiteSettings(prev => ({ ...prev, premiumFeatures: [...(prev.premiumFeatures || []), newItem] }))
+    }
+  }
+
+  // 섹션 항목 삭제
+  const handleRemoveSectionItem = (sectionType, index) => {
+    if (!confirm('이 항목을 삭제하시겠습니까?')) return
+
+    if (sectionType === 'useCases') {
+      setSiteSettings(prev => ({
+        ...prev,
+        useCases: prev.useCases.filter((_, i) => i !== index)
+      }))
+    } else if (sectionType === 'testimonials') {
+      setSiteSettings(prev => ({
+        ...prev,
+        testimonials: prev.testimonials.filter((_, i) => i !== index)
+      }))
+    } else if (sectionType === 'premiumFeatures') {
+      setSiteSettings(prev => ({
+        ...prev,
+        premiumFeatures: prev.premiumFeatures.filter((_, i) => i !== index)
+      }))
+    }
+    // 이미지 선택기 초기화
     setImageSelector({ open: false, section: null, index: null })
   }
 
@@ -817,11 +855,29 @@ export default function AdminPage() {
               {/* 업종별 활용 사례 설정 */}
               {siteSettings.showUseCases !== false && (
               <div className="bg-blue-50 rounded-xl p-6">
-                <h4 className="font-medium text-gray-900 mb-4">업종별 활용 사례</h4>
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium text-gray-900">업종별 활용 사례</h4>
+                  <button
+                    type="button"
+                    onClick={() => handleAddSectionItem('useCases')}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    항목 추가
+                  </button>
+                </div>
                 <div className="space-y-4">
                   {(siteSettings.useCases || []).map((useCase, index) => (
-                    <div key={index} className="bg-white p-4 rounded-lg border">
-                      <div className="flex items-center gap-4 mb-3">
+                    <div key={index} className="bg-white p-4 rounded-lg border relative">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSectionItem('useCases', index)}
+                        className="absolute top-2 right-2 p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                        title="삭제"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <div className="flex items-center gap-4 mb-3 pr-8">
                         <span className="text-sm font-bold text-blue-600">#{index + 1}</span>
                         <input
                           type="text"
@@ -910,11 +966,29 @@ export default function AdminPage() {
               {/* 고객 후기 설정 */}
               {siteSettings.showTestimonials !== false && (
               <div className="bg-yellow-50 rounded-xl p-6">
-                <h4 className="font-medium text-gray-900 mb-4">고객 후기</h4>
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium text-gray-900">고객 후기</h4>
+                  <button
+                    type="button"
+                    onClick={() => handleAddSectionItem('testimonials')}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    항목 추가
+                  </button>
+                </div>
                 <div className="space-y-4">
                   {(siteSettings.testimonials || []).map((testimonial, index) => (
-                    <div key={index} className="bg-white p-4 rounded-lg border">
-                      <div className="flex items-center gap-4 mb-3">
+                    <div key={index} className="bg-white p-4 rounded-lg border relative">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSectionItem('testimonials', index)}
+                        className="absolute top-2 right-2 p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                        title="삭제"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <div className="flex items-center gap-4 mb-3 pr-8">
                         <span className="text-sm font-bold text-yellow-600">#{index + 1}</span>
                         <input
                           type="text"
@@ -1003,11 +1077,29 @@ export default function AdminPage() {
               {/* 프리미엄 기능 설정 */}
               {siteSettings.showPremiumFeatures !== false && (
               <div className="bg-purple-50 rounded-xl p-6">
-                <h4 className="font-medium text-gray-900 mb-4">프리미엄 기능</h4>
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium text-gray-900">프리미엄 기능</h4>
+                  <button
+                    type="button"
+                    onClick={() => handleAddSectionItem('premiumFeatures')}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    항목 추가
+                  </button>
+                </div>
                 <div className="space-y-4">
                   {(siteSettings.premiumFeatures || []).map((feature, index) => (
-                    <div key={index} className="bg-white p-4 rounded-lg border">
-                      <div className="flex items-center gap-4 mb-3">
+                    <div key={index} className="bg-white p-4 rounded-lg border relative">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSectionItem('premiumFeatures', index)}
+                        className="absolute top-2 right-2 p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                        title="삭제"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <div className="flex items-center gap-4 mb-3 pr-8">
                         <span className="text-sm font-bold text-purple-600">#{index + 1}</span>
                         <input
                           type="text"
