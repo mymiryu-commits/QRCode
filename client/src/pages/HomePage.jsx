@@ -130,7 +130,14 @@ export default function HomePage() {
     heroImage: '/images/1.png',
     heroTitle: '10시간 → 10분으로',
     heroSubtitle: '연락처 일괄 저장',
-    heroDescription: '엑셀로 관리하던 수백 명의 연락처, QR코드 하나로 고객 폰에 바로 저장하세요.'
+    heroDescription: '엑셀로 관리하던 수백 명의 연락처, QR코드 하나로 고객 폰에 바로 저장하세요.',
+    heroBadge: '보험 FP · 영업팀을 위한 업무 자동화',
+    showUseCases: true,
+    showTestimonials: true,
+    showPremiumFeatures: true,
+    showCharacterQR: true,
+    ctaButtonText: '무료로 시작하기',
+    ctaButtonLink: '/generate'
   })
 
   // 설정 로드
@@ -157,7 +164,7 @@ export default function HomePage() {
           <div className="text-center lg:text-left">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500/10 to-purple-500/10 border border-primary-200 text-primary-700 rounded-full text-sm font-medium mb-6">
               <Award className="w-4 h-4" />
-              보험 FP · 영업팀을 위한 업무 자동화
+              {settings.heroBadge}
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
@@ -174,9 +181,9 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4 mb-8">
-              <Link to="/generate" className="group relative px-8 py-4 bg-gradient-to-r from-primary-500 to-purple-500 text-white rounded-xl font-semibold shadow-xl shadow-primary-500/25 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
+              <Link to={settings.ctaButtonLink} className="group relative px-8 py-4 bg-gradient-to-r from-primary-500 to-purple-500 text-white rounded-xl font-semibold shadow-xl shadow-primary-500/25 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
                 <QrCode className="w-5 h-5" />
-                무료로 시작하기
+                {settings.ctaButtonText}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link to="/insurance" className="px-8 py-4 bg-white border-2 border-slate-200 text-slate-700 rounded-xl font-semibold hover:border-primary-300 hover:text-primary-600 transition-all duration-200 flex items-center gap-2">
@@ -253,6 +260,7 @@ export default function HomePage() {
       </section>
 
       {/* 업종별 활용 사례 - 이미지 카드 */}
+      {settings.showUseCases !== false && (
       <section>
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-sm font-medium mb-4">
@@ -320,8 +328,10 @@ export default function HomePage() {
           })}
         </div>
       </section>
+      )}
 
       {/* 프리미엄 기능 - 이미지 카드 */}
+      {settings.showPremiumFeatures !== false && (
       <section className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-8 md:p-16 text-white">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 text-white/80 rounded-full text-sm font-medium mb-4">
@@ -373,8 +383,10 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+      )}
 
       {/* 고객 후기 - 사진 포함 */}
+      {settings.showTestimonials !== false && (
       <section>
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-sm font-medium mb-4">
@@ -413,6 +425,7 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+      )}
 
       {/* 사용 방법 - 비주얼 스텝 */}
       <section className="bg-slate-50 rounded-3xl p-8 md:p-16">
@@ -526,6 +539,7 @@ export default function HomePage() {
       </section>
 
       {/* 고객센터 안내 - 귀여운 캐릭터 QR코드 */}
+      {settings.showCharacterQR !== false && (
       <section className="bg-gradient-to-br from-amber-50 via-pink-50 to-purple-50 rounded-3xl p-8 md:p-12">
         <div className="text-center mb-10">
           <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
@@ -749,6 +763,7 @@ export default function HomePage() {
           </p>
         </div>
       </section>
+      )}
     </div>
   )
 }

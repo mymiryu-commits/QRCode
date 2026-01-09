@@ -35,10 +35,20 @@ export default function AdminPage() {
 
   // 사이트 설정 상태
   const [siteSettings, setSiteSettings] = useState({
+    // 히어로 섹션
     heroImage: '/images/1.png',
     heroTitle: '10시간 → 10분으로',
     heroSubtitle: '연락처 일괄 저장',
-    heroDescription: '엑셀로 관리하던 수백 명의 연락처, QR코드 하나로 고객 폰에 바로 저장하세요.'
+    heroDescription: '엑셀로 관리하던 수백 명의 연락처, QR코드 하나로 고객 폰에 바로 저장하세요.',
+    heroBadge: '보험 FP · 영업팀을 위한 업무 자동화',
+    // 섹션 표시 설정
+    showUseCases: true,
+    showTestimonials: true,
+    showPremiumFeatures: true,
+    showCharacterQR: true,
+    // CTA 버튼
+    ctaButtonText: '무료로 시작하기',
+    ctaButtonLink: '/generate'
   })
   const [availableImages, setAvailableImages] = useState([])
   const [settingsLoading, setSettingsLoading] = useState(false)
@@ -556,6 +566,16 @@ export default function AdminPage() {
                 <h4 className="font-medium text-gray-900 mb-4">히어로 섹션 텍스트</h4>
                 <div className="space-y-4">
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">상단 배지 문구</label>
+                    <input
+                      type="text"
+                      value={siteSettings.heroBadge || ''}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, heroBadge: e.target.value }))}
+                      placeholder="보험 FP · 영업팀을 위한 업무 자동화"
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">메인 타이틀</label>
                     <input
                       type="text"
@@ -585,6 +605,76 @@ export default function AdminPage() {
                       className="w-full px-4 py-2 border rounded-lg"
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* CTA 버튼 설정 */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h4 className="font-medium text-gray-900 mb-4">CTA 버튼 설정</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">버튼 텍스트</label>
+                    <input
+                      type="text"
+                      value={siteSettings.ctaButtonText || ''}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, ctaButtonText: e.target.value }))}
+                      placeholder="무료로 시작하기"
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">버튼 링크</label>
+                    <input
+                      type="text"
+                      value={siteSettings.ctaButtonLink || ''}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, ctaButtonLink: e.target.value }))}
+                      placeholder="/generate"
+                      className="w-full px-4 py-2 border rounded-lg"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 섹션 표시 설정 */}
+              <div className="bg-gray-50 rounded-xl p-6">
+                <h4 className="font-medium text-gray-900 mb-4">섹션 표시 설정</h4>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={siteSettings.showCharacterQR !== false}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, showCharacterQR: e.target.checked }))}
+                      className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-gray-700">캐릭터 QR 섹션 표시</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={siteSettings.showUseCases !== false}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, showUseCases: e.target.checked }))}
+                      className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-gray-700">업종별 활용 사례 섹션 표시</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={siteSettings.showTestimonials !== false}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, showTestimonials: e.target.checked }))}
+                      className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-gray-700">고객 후기 섹션 표시</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={siteSettings.showPremiumFeatures !== false}
+                      onChange={(e) => setSiteSettings(prev => ({ ...prev, showPremiumFeatures: e.target.checked }))}
+                      className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-gray-700">프리미엄 기능 섹션 표시</span>
+                  </label>
                 </div>
               </div>
 

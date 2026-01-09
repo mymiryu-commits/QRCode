@@ -2260,15 +2260,28 @@ app.get('/api/settings', async (req, res) => {
 // 사이트 설정 저장 (관리자 전용)
 app.put('/api/admin/settings', authenticate, requireAdmin, async (req, res) => {
   try {
-    const { heroImage, heroTitle, heroSubtitle, heroDescription } = req.body;
+    const settings = req.body;
 
     await db.read();
 
+    // 기존 설정과 병합
     db.data.site_settings = {
-      heroImage: heroImage || '/images/1.png',
-      heroTitle: heroTitle || '10시간 → 10분으로',
-      heroSubtitle: heroSubtitle || '연락처 일괄 저장',
-      heroDescription: heroDescription || '',
+      ...db.data.site_settings,
+      // 히어로 섹션
+      heroImage: settings.heroImage || db.data.site_settings?.heroImage || '/images/1.png',
+      heroTitle: settings.heroTitle || db.data.site_settings?.heroTitle || '10시간 → 10분으로',
+      heroSubtitle: settings.heroSubtitle || db.data.site_settings?.heroSubtitle || '연락처 일괄 저장',
+      heroDescription: settings.heroDescription || db.data.site_settings?.heroDescription || '',
+      heroBadge: settings.heroBadge || db.data.site_settings?.heroBadge || '보험 FP · 영업팀을 위한 업무 자동화',
+      // 섹션 활성화
+      showUseCases: settings.showUseCases !== undefined ? settings.showUseCases : true,
+      showTestimonials: settings.showTestimonials !== undefined ? settings.showTestimonials : true,
+      showPremiumFeatures: settings.showPremiumFeatures !== undefined ? settings.showPremiumFeatures : true,
+      showCharacterQR: settings.showCharacterQR !== undefined ? settings.showCharacterQR : true,
+      // CTA 버튼
+      ctaButtonText: settings.ctaButtonText || db.data.site_settings?.ctaButtonText || '무료로 시작하기',
+      ctaButtonLink: settings.ctaButtonLink || db.data.site_settings?.ctaButtonLink || '/generate',
+      // 메타데이터
       updated_at: new Date().toISOString(),
       updated_by: req.user.id
     };
