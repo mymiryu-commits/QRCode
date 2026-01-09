@@ -543,7 +543,7 @@ export default function HomePage() {
                 </svg>
 
                 {/* QR코드 - 곰 배 위에 */}
-                <div className="absolute top-[152px] left-1/2 -translate-x-1/2">
+                <div className="absolute top-[149px] left-1/2 -translate-x-1/2">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=tel:1588-5617&color=92400E&bgcolor=FFF8F0`}
                     alt="전화 QR코드"
@@ -608,7 +608,7 @@ export default function HomePage() {
                 </svg>
 
                 {/* QR코드 - 토끼 배 위에 */}
-                <div className="absolute top-[158px] left-1/2 -translate-x-1/2">
+                <div className="absolute top-[153px] left-1/2 -translate-x-1/2">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=mailto:mymiryu@gmail.com&color=DB2777&bgcolor=FFFFFF`}
                     alt="이메일 QR코드"
@@ -683,7 +683,7 @@ export default function HomePage() {
                 </svg>
 
                 {/* QR코드 - 고양이 배 위에 */}
-                <div className="absolute top-[158px] left-1/2 -translate-x-1/2">
+                <div className="absolute top-[153px] left-1/2 -translate-x-1/2">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent('BEGIN:VCARD\nVERSION:3.0\nFN:PlanX QR 고객센터\nTEL:1588-5617\nEMAIL:mymiryu@gmail.com\nURL:https://30daysliving.com\nEND:VCARD')}&color=7C3AED&bgcolor=FAF5FF`}
                     alt="연락처 저장 QR코드"
