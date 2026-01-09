@@ -482,110 +482,228 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 고객센터 안내 - QR코드 포함 */}
-      <section className="bg-gradient-to-br from-slate-50 to-purple-50 rounded-3xl p-8 md:p-12">
+      {/* 고객센터 안내 - 귀여운 캐릭터 QR코드 */}
+      <section className="bg-gradient-to-br from-amber-50 via-pink-50 to-purple-50 rounded-3xl p-8 md:p-12">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 text-4xl mb-4">
-            <span>🌸</span>
-            <span>💬</span>
-            <span>🌸</span>
-          </div>
           <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
             도입 상담이 필요하신가요?
           </h2>
-          <p className="text-slate-600">QR코드를 스캔하여 바로 연락하세요</p>
+          <p className="text-slate-600">귀여운 친구들 배를 카메라로 찍어보세요! 📸</p>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12">
-          {/* 전화 QR - 민트/그린 테마 */}
+        <div className="flex flex-col md:flex-row items-start justify-center gap-6 md:gap-12">
+
+          {/* 곰 캐릭터 - 전화 */}
           <div className="text-center group">
             <div className="relative">
-              {/* 꽃 데코레이션 */}
-              <div className="absolute -top-3 -left-3 text-2xl animate-bounce" style={{ animationDelay: '0s' }}>🌷</div>
-              <div className="absolute -top-2 -right-3 text-xl animate-bounce" style={{ animationDelay: '0.5s' }}>🌿</div>
-              <div className="absolute -bottom-2 -left-2 text-xl animate-bounce" style={{ animationDelay: '0.3s' }}>🍀</div>
+              {/* 말풍선 */}
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-sm z-10">
+                찍으면 바로 전화! 📞
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-amber-100"></div>
+              </div>
 
-              <div className="bg-white p-5 rounded-3xl shadow-lg mb-4 inline-block border-4 border-emerald-200 group-hover:border-emerald-400 group-hover:shadow-emerald-100 group-hover:shadow-xl transition-all duration-300">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=tel:1588-5617&color=059669&bgcolor=ECFDF5`}
-                  alt="전화 QR코드"
-                  className="w-28 h-28 rounded-lg"
-                />
+              {/* 곰 캐릭터 SVG */}
+              <div className="relative w-44 h-52 group-hover:scale-105 transition-transform duration-300 cursor-pointer">
+                <svg viewBox="0 0 180 220" className="w-full h-full drop-shadow-lg">
+                  {/* 귀 */}
+                  <circle cx="45" cy="32" r="24" fill="#D4A574" />
+                  <circle cx="45" cy="32" r="15" fill="#C4956A" />
+                  <circle cx="135" cy="32" r="24" fill="#D4A574" />
+                  <circle cx="135" cy="32" r="15" fill="#C4956A" />
+
+                  {/* 얼굴 */}
+                  <ellipse cx="90" cy="75" rx="55" ry="48" fill="#D4A574" />
+
+                  {/* 눈 */}
+                  <ellipse cx="65" cy="68" rx="6" ry="8" fill="#3D2914" />
+                  <ellipse cx="115" cy="68" rx="6" ry="8" fill="#3D2914" />
+                  <circle cx="67" cy="66" r="2" fill="white" />
+                  <circle cx="117" cy="66" r="2" fill="white" />
+
+                  {/* 볼터치 */}
+                  <ellipse cx="42" cy="85" rx="10" ry="6" fill="#FFB5B5" opacity="0.6" />
+                  <ellipse cx="138" cy="85" rx="10" ry="6" fill="#FFB5B5" opacity="0.6" />
+
+                  {/* 코 */}
+                  <ellipse cx="90" cy="85" rx="14" ry="10" fill="#C4956A" />
+                  <ellipse cx="90" cy="83" rx="8" ry="5" fill="#3D2914" />
+
+                  {/* 입 - 웃는 표정 */}
+                  <path d="M 80 95 Q 90 105 100 95" stroke="#3D2914" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+
+                  {/* 몸통 */}
+                  <ellipse cx="90" cy="168" rx="50" ry="46" fill="#D4A574" />
+
+                  {/* 배 (QR 영역) - 흰색 */}
+                  <ellipse cx="90" cy="168" rx="38" ry="35" fill="#FFF8F0" stroke="#E8D5C4" strokeWidth="2" />
+
+                  {/* 손 */}
+                  <ellipse cx="38" cy="150" rx="12" ry="16" fill="#D4A574" transform="rotate(-20 38 150)" />
+                  <ellipse cx="142" cy="150" rx="12" ry="16" fill="#D4A574" transform="rotate(20 142 150)" />
+                </svg>
+
+                {/* QR코드 - 곰 배 위에 */}
+                <div className="absolute top-[118px] left-1/2 -translate-x-1/2">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=tel:1588-5617&color=92400E&bgcolor=FFF8F0`}
+                    alt="전화 QR코드"
+                    className="w-[60px] h-[60px] rounded"
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-center gap-2 text-emerald-700 font-semibold">
-              <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                <Phone className="w-4 h-4 text-emerald-600" />
-              </div>
-              <a href="tel:1588-5617" className="hover:text-emerald-500 transition-colors">1588-5617</a>
+            <div className="mt-1 flex items-center justify-center gap-2 text-amber-700 font-semibold">
+              <Phone className="w-4 h-4" />
+              <a href="tel:1588-5617" className="hover:text-amber-500 transition-colors">1588-5617</a>
             </div>
-            <p className="text-sm text-slate-500 mt-2 flex items-center justify-center gap-1">
-              <span>📞</span> 스캔하면 바로 전화
-            </p>
           </div>
 
-          {/* 이메일 QR - 블루 테마 */}
+          {/* 토끼 캐릭터 - 이메일 */}
           <div className="text-center group">
             <div className="relative">
-              {/* 새/하트 데코레이션 */}
-              <div className="absolute -top-3 -left-2 text-2xl animate-bounce" style={{ animationDelay: '0.2s' }}>🕊️</div>
-              <div className="absolute -top-2 -right-3 text-xl animate-bounce" style={{ animationDelay: '0.7s' }}>💙</div>
-              <div className="absolute -bottom-2 -right-2 text-xl animate-bounce" style={{ animationDelay: '0.4s' }}>✨</div>
+              {/* 말풍선 */}
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-pink-100 text-pink-800 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-sm z-10">
+                메일이 슝~! 💌
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-pink-100"></div>
+              </div>
 
-              <div className="bg-white p-5 rounded-3xl shadow-lg mb-4 inline-block border-4 border-blue-200 group-hover:border-blue-400 group-hover:shadow-blue-100 group-hover:shadow-xl transition-all duration-300">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=mailto:mymiryu@gmail.com&color=2563EB&bgcolor=EFF6FF`}
-                  alt="이메일 QR코드"
-                  className="w-28 h-28 rounded-lg"
-                />
+              {/* 토끼 캐릭터 SVG */}
+              <div className="relative w-44 h-52 group-hover:scale-105 transition-transform duration-300 cursor-pointer">
+                <svg viewBox="0 0 180 220" className="w-full h-full drop-shadow-lg">
+                  {/* 귀 */}
+                  <ellipse cx="55" cy="38" rx="16" ry="42" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="2" />
+                  <ellipse cx="55" cy="38" rx="9" ry="28" fill="#FFD1DC" opacity="0.6" />
+                  <ellipse cx="125" cy="38" rx="16" ry="42" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="2" />
+                  <ellipse cx="125" cy="38" rx="9" ry="28" fill="#FFD1DC" opacity="0.6" />
+
+                  {/* 얼굴 */}
+                  <ellipse cx="90" cy="92" rx="48" ry="42" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="2" />
+
+                  {/* 눈 */}
+                  <ellipse cx="70" cy="85" rx="5" ry="7" fill="#3D2914" />
+                  <ellipse cx="110" cy="85" rx="5" ry="7" fill="#3D2914" />
+                  <circle cx="72" cy="83" r="2" fill="white" />
+                  <circle cx="112" cy="83" r="2" fill="white" />
+
+                  {/* 볼터치 */}
+                  <ellipse cx="48" cy="98" rx="8" ry="5" fill="#FFB6C1" opacity="0.6" />
+                  <ellipse cx="132" cy="98" rx="8" ry="5" fill="#FFB6C1" opacity="0.6" />
+
+                  {/* 코 */}
+                  <ellipse cx="90" cy="98" rx="5" ry="4" fill="#FFB6C1" />
+
+                  {/* 입 */}
+                  <path d="M 83 107 Q 90 114 97 107" stroke="#3D2914" strokeWidth="2" fill="none" strokeLinecap="round" />
+                  <line x1="90" y1="98" x2="90" y2="107" stroke="#3D2914" strokeWidth="1.5" />
+
+                  {/* 몸통 */}
+                  <ellipse cx="90" cy="172" rx="45" ry="42" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="2" />
+
+                  {/* 배 (QR 영역) */}
+                  <ellipse cx="90" cy="172" rx="35" ry="32" fill="white" stroke="#FFD1DC" strokeWidth="2" />
+
+                  {/* 손 */}
+                  <ellipse cx="42" cy="155" rx="10" ry="14" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="1.5" transform="rotate(-15 42 155)" />
+                  <ellipse cx="138" cy="155" rx="10" ry="14" fill="#FFF0F5" stroke="#FFB6C1" strokeWidth="1.5" transform="rotate(15 138 155)" />
+                </svg>
+
+                {/* QR코드 - 토끼 배 위에 */}
+                <div className="absolute top-[125px] left-1/2 -translate-x-1/2">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=mailto:mymiryu@gmail.com&color=DB2777&bgcolor=FFFFFF`}
+                    alt="이메일 QR코드"
+                    className="w-[55px] h-[55px] rounded"
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-center gap-2 text-blue-700 font-semibold">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <Mail className="w-4 h-4 text-blue-600" />
-              </div>
-              <a href="mailto:mymiryu@gmail.com" className="hover:text-blue-500 transition-colors">mymiryu@gmail.com</a>
+            <div className="mt-1 flex items-center justify-center gap-2 text-pink-700 font-semibold text-sm">
+              <Mail className="w-4 h-4" />
+              <a href="mailto:mymiryu@gmail.com" className="hover:text-pink-500 transition-colors">mymiryu@gmail.com</a>
             </div>
-            <p className="text-sm text-slate-500 mt-2 flex items-center justify-center gap-1">
-              <span>💌</span> 스캔하면 메일 작성
-            </p>
           </div>
 
-          {/* 연락처 저장 QR - 퍼플 테마 */}
+          {/* 고양이 캐릭터 - 연락처 저장 */}
           <div className="text-center group">
             <div className="relative">
-              {/* 별/꽃 데코레이션 */}
-              <div className="absolute -top-3 -right-2 text-2xl animate-bounce" style={{ animationDelay: '0.1s' }}>🌟</div>
-              <div className="absolute -top-2 -left-3 text-xl animate-bounce" style={{ animationDelay: '0.6s' }}>💜</div>
-              <div className="absolute -bottom-2 -left-1 text-xl animate-bounce" style={{ animationDelay: '0.8s' }}>🦋</div>
+              {/* 말풍선 */}
+              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-sm z-10">
+                연락처 저장 냥~! 😺
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-purple-100"></div>
+              </div>
 
-              <div className="bg-white p-5 rounded-3xl shadow-lg mb-4 inline-block border-4 border-purple-200 group-hover:border-purple-400 group-hover:shadow-purple-100 group-hover:shadow-xl transition-all duration-300">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('BEGIN:VCARD\nVERSION:3.0\nFN:PlanX QR 고객센터\nTEL:1588-5617\nEMAIL:mymiryu@gmail.com\nURL:https://30daysliving.com\nEND:VCARD')}&color=7C3AED&bgcolor=FAF5FF`}
-                  alt="연락처 저장 QR코드"
-                  className="w-28 h-28 rounded-lg"
-                />
+              {/* 고양이 캐릭터 SVG */}
+              <div className="relative w-44 h-52 group-hover:scale-105 transition-transform duration-300 cursor-pointer">
+                <svg viewBox="0 0 180 220" className="w-full h-full drop-shadow-lg">
+                  {/* 귀 */}
+                  <polygon points="42,68 28,18 68,50" fill="#E9D5FF" stroke="#C084FC" strokeWidth="2" />
+                  <polygon points="46,58 36,28 62,48" fill="#F3E8FF" />
+                  <polygon points="138,68 152,18 112,50" fill="#E9D5FF" stroke="#C084FC" strokeWidth="2" />
+                  <polygon points="134,58 144,28 118,48" fill="#F3E8FF" />
+
+                  {/* 얼굴 */}
+                  <ellipse cx="90" cy="88" rx="50" ry="44" fill="#E9D5FF" stroke="#C084FC" strokeWidth="2" />
+
+                  {/* 눈 - 고양이 눈 */}
+                  <ellipse cx="68" cy="80" rx="8" ry="12" fill="#3D2914" />
+                  <ellipse cx="112" cy="80" rx="8" ry="12" fill="#3D2914" />
+                  <ellipse cx="68" cy="80" rx="4" ry="8" fill="#1a1a2e" />
+                  <ellipse cx="112" cy="80" rx="4" ry="8" fill="#1a1a2e" />
+                  <circle cx="71" cy="77" r="2.5" fill="white" />
+                  <circle cx="115" cy="77" r="2.5" fill="white" />
+
+                  {/* 볼터치 */}
+                  <ellipse cx="45" cy="95" rx="8" ry="5" fill="#FFB6C1" opacity="0.5" />
+                  <ellipse cx="135" cy="95" rx="8" ry="5" fill="#FFB6C1" opacity="0.5" />
+
+                  {/* 코 */}
+                  <polygon points="90,95 85,102 95,102" fill="#C084FC" />
+
+                  {/* 수염 */}
+                  <line x1="52" y1="98" x2="30" y2="94" stroke="#A855F7" strokeWidth="1.5" opacity="0.7" />
+                  <line x1="52" y1="103" x2="30" y2="105" stroke="#A855F7" strokeWidth="1.5" opacity="0.7" />
+                  <line x1="128" y1="98" x2="150" y2="94" stroke="#A855F7" strokeWidth="1.5" opacity="0.7" />
+                  <line x1="128" y1="103" x2="150" y2="105" stroke="#A855F7" strokeWidth="1.5" opacity="0.7" />
+
+                  {/* 입 - ω 모양 */}
+                  <path d="M 82 110 Q 86 115 90 110 Q 94 115 98 110" stroke="#3D2914" strokeWidth="2" fill="none" strokeLinecap="round" />
+
+                  {/* 몸통 */}
+                  <ellipse cx="90" cy="172" rx="48" ry="44" fill="#E9D5FF" stroke="#C084FC" strokeWidth="2" />
+
+                  {/* 배 (QR 영역) */}
+                  <ellipse cx="90" cy="172" rx="36" ry="34" fill="#FAF5FF" stroke="#DDD6FE" strokeWidth="2" />
+
+                  {/* 손 */}
+                  <ellipse cx="40" cy="158" rx="10" ry="14" fill="#E9D5FF" stroke="#C084FC" strokeWidth="1.5" transform="rotate(-20 40 158)" />
+                  <ellipse cx="140" cy="158" rx="10" ry="14" fill="#E9D5FF" stroke="#C084FC" strokeWidth="1.5" transform="rotate(20 140 158)" />
+
+                  {/* 꼬리 */}
+                  <path d="M 138 190 Q 165 175 155 150" stroke="#C084FC" strokeWidth="8" fill="none" strokeLinecap="round" />
+                </svg>
+
+                {/* QR코드 - 고양이 배 위에 */}
+                <div className="absolute top-[122px] left-1/2 -translate-x-1/2">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent('BEGIN:VCARD\nVERSION:3.0\nFN:PlanX QR 고객센터\nTEL:1588-5617\nEMAIL:mymiryu@gmail.com\nURL:https://30daysliving.com\nEND:VCARD')}&color=7C3AED&bgcolor=FAF5FF`}
+                    alt="연락처 저장 QR코드"
+                    className="w-[55px] h-[55px] rounded"
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-center gap-2 text-purple-700 font-semibold">
-              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-purple-600" />
-              </div>
+            <div className="mt-1 flex items-center justify-center gap-2 text-purple-700 font-semibold">
+              <User className="w-4 h-4" />
               연락처 저장
             </div>
-            <p className="text-sm text-slate-500 mt-2 flex items-center justify-center gap-1">
-              <span>📱</span> 스캔하면 연락처 저장
-            </p>
           </div>
         </div>
 
-        {/* 하단 귀여운 안내 */}
-        <div className="mt-10 text-center">
-          <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur px-6 py-3 rounded-full shadow-sm">
-            <span className="text-2xl">🐰</span>
-            <span className="text-slate-600 text-sm">언제든 편하게 문의해 주세요!</span>
-            <span className="text-2xl">🐻</span>
-          </div>
+        {/* 하단 안내 */}
+        <div className="mt-8 text-center">
+          <p className="text-slate-500 text-sm bg-white/60 inline-block px-4 py-2 rounded-full">
+            💡 스마트폰 카메라로 캐릭터의 <span className="font-semibold text-slate-700">배</span>를 스캔하세요!
+          </p>
         </div>
       </section>
     </div>
