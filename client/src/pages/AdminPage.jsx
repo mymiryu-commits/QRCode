@@ -80,6 +80,7 @@ export default function AdminPage() {
   const [availableImages, setAvailableImages] = useState([])
   const [settingsLoading, setSettingsLoading] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
+  const [imageSelector, setImageSelector] = useState({ open: false, section: null, index: null })
 
   const { user, isAdmin } = useAuth()
   const navigate = useNavigate()
@@ -192,6 +193,25 @@ export default function AdminPage() {
     } finally {
       setSettingsLoading(false)
     }
+  }
+
+  // 기존 이미지 선택
+  const handleSelectExistingImage = (imageUrl) => {
+    const { section, index } = imageSelector
+    if (section === 'useCases') {
+      const newUseCases = [...siteSettings.useCases]
+      newUseCases[index] = { ...newUseCases[index], image: imageUrl }
+      setSiteSettings(prev => ({ ...prev, useCases: newUseCases }))
+    } else if (section === 'testimonials') {
+      const newTestimonials = [...siteSettings.testimonials]
+      newTestimonials[index] = { ...newTestimonials[index], image: imageUrl }
+      setSiteSettings(prev => ({ ...prev, testimonials: newTestimonials }))
+    } else if (section === 'premiumFeatures') {
+      const newFeatures = [...siteSettings.premiumFeatures]
+      newFeatures[index] = { ...newFeatures[index], image: imageUrl }
+      setSiteSettings(prev => ({ ...prev, premiumFeatures: newFeatures }))
+    }
+    setImageSelector({ open: false, section: null, index: null })
   }
 
   const handleRoleChange = async (userId, newRole) => {
@@ -837,10 +857,10 @@ export default function AdminPage() {
                         rows={2}
                         className="w-full mt-3 px-3 py-1.5 border rounded text-sm"
                       />
-                      <div className="mt-3 flex items-center gap-3">
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
                         <label className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded cursor-pointer hover:bg-blue-200 transition-colors text-sm">
                           <Upload className="w-4 h-4" />
-                          이미지 업로드
+                          업로드
                           <input
                             type="file"
                             accept="image/*"
@@ -848,10 +868,39 @@ export default function AdminPage() {
                             className="hidden"
                           />
                         </label>
+                        <button
+                          type="button"
+                          onClick={() => setImageSelector(prev =>
+                            prev.open && prev.section === 'useCases' && prev.index === index
+                              ? { open: false, section: null, index: null }
+                              : { open: true, section: 'useCases', index }
+                          )}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-white border border-blue-300 text-blue-700 rounded hover:bg-blue-50 transition-colors text-sm"
+                        >
+                          <Image className="w-4 h-4" />
+                          기존 이미지 선택
+                        </button>
                         {useCase.image && (
                           <img src={useCase.image} alt={useCase.title} className="h-16 rounded object-cover" />
                         )}
                       </div>
+                      {imageSelector.open && imageSelector.section === 'useCases' && imageSelector.index === index && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                          <p className="text-xs text-gray-500 mb-2">이미지 선택:</p>
+                          <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
+                            {availableImages.map((img, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleSelectExistingImage(img.url)}
+                                className="relative rounded overflow-hidden border-2 border-transparent hover:border-blue-500 transition-colors"
+                              >
+                                <img src={img.url} alt={img.name} className="w-full h-16 object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -901,10 +950,10 @@ export default function AdminPage() {
                         rows={2}
                         className="w-full px-3 py-1.5 border rounded text-sm"
                       />
-                      <div className="mt-3 flex items-center gap-3">
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
                         <label className="flex items-center gap-2 px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded cursor-pointer hover:bg-yellow-200 transition-colors text-sm">
                           <Upload className="w-4 h-4" />
-                          프로필 이미지
+                          업로드
                           <input
                             type="file"
                             accept="image/*"
@@ -912,10 +961,39 @@ export default function AdminPage() {
                             className="hidden"
                           />
                         </label>
+                        <button
+                          type="button"
+                          onClick={() => setImageSelector(prev =>
+                            prev.open && prev.section === 'testimonials' && prev.index === index
+                              ? { open: false, section: null, index: null }
+                              : { open: true, section: 'testimonials', index }
+                          )}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-white border border-yellow-300 text-yellow-700 rounded hover:bg-yellow-50 transition-colors text-sm"
+                        >
+                          <Image className="w-4 h-4" />
+                          기존 이미지 선택
+                        </button>
                         {testimonial.image && (
                           <img src={testimonial.image} alt={testimonial.name} className="w-16 h-16 rounded-full object-cover" />
                         )}
                       </div>
+                      {imageSelector.open && imageSelector.section === 'testimonials' && imageSelector.index === index && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                          <p className="text-xs text-gray-500 mb-2">이미지 선택:</p>
+                          <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
+                            {availableImages.map((img, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleSelectExistingImage(img.url)}
+                                className="relative rounded overflow-hidden border-2 border-transparent hover:border-yellow-500 transition-colors"
+                              >
+                                <img src={img.url} alt={img.name} className="w-full h-16 object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -954,10 +1032,10 @@ export default function AdminPage() {
                         rows={2}
                         className="w-full px-3 py-1.5 border rounded text-sm"
                       />
-                      <div className="mt-3 flex items-center gap-3">
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
                         <label className="flex items-center gap-2 px-3 py-1.5 bg-purple-100 text-purple-700 rounded cursor-pointer hover:bg-purple-200 transition-colors text-sm">
                           <Upload className="w-4 h-4" />
-                          이미지 업로드
+                          업로드
                           <input
                             type="file"
                             accept="image/*"
@@ -965,10 +1043,39 @@ export default function AdminPage() {
                             className="hidden"
                           />
                         </label>
+                        <button
+                          type="button"
+                          onClick={() => setImageSelector(prev =>
+                            prev.open && prev.section === 'premiumFeatures' && prev.index === index
+                              ? { open: false, section: null, index: null }
+                              : { open: true, section: 'premiumFeatures', index }
+                          )}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-white border border-purple-300 text-purple-700 rounded hover:bg-purple-50 transition-colors text-sm"
+                        >
+                          <Image className="w-4 h-4" />
+                          기존 이미지 선택
+                        </button>
                         {feature.image && (
                           <img src={feature.image} alt={feature.title} className="h-16 rounded object-cover" />
                         )}
                       </div>
+                      {imageSelector.open && imageSelector.section === 'premiumFeatures' && imageSelector.index === index && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                          <p className="text-xs text-gray-500 mb-2">이미지 선택:</p>
+                          <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
+                            {availableImages.map((img, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleSelectExistingImage(img.url)}
+                                className="relative rounded overflow-hidden border-2 border-transparent hover:border-purple-500 transition-colors"
+                              >
+                                <img src={img.url} alt={img.name} className="w-full h-16 object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
