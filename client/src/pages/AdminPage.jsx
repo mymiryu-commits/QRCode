@@ -113,8 +113,9 @@ export default function AdminPage() {
       setUsers(usersRes.data)
       setStats(statsRes.data)
       setPromoCodes(promoRes.data)
-      if (settingsRes.data) {
-        setSiteSettings(prev => ({ ...prev, ...settingsRes.data }))
+      // 서버에 저장된 설정이 있으면 직접 사용 (기본값 병합 X)
+      if (settingsRes.data && Object.keys(settingsRes.data).length > 0) {
+        setSiteSettings(settingsRes.data)
       }
       setAvailableImages(imagesRes.data || [])
     } catch (err) {
