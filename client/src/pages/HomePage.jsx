@@ -125,26 +125,28 @@ const clientLogos = [
 export default function HomePage() {
   return (
     <div className="space-y-24 animate-fade-in">
-      {/* 히어로 섹션 - 이미지 포함 */}
+      {/* 히어로 섹션 - 워크플로우 이미지 */}
       <section className="relative overflow-hidden">
         <div className="grid lg:grid-cols-2 gap-12 items-center py-12">
           {/* 텍스트 영역 */}
           <div className="text-center lg:text-left">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500/10 to-purple-500/10 border border-primary-200 text-primary-700 rounded-full text-sm font-medium mb-6">
               <Award className="w-4 h-4" />
-              기업을 위한 프리미엄 QR코드 솔루션
+              보험 FP · 영업팀을 위한 업무 자동화
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-              비즈니스를 연결하는
+              <span className="line-through text-slate-400 text-3xl md:text-4xl">10시간</span>
+              <span className="text-primary-500 mx-2">→</span>
+              <span className="text-primary-600">10분</span>으로
               <span className="block bg-gradient-to-r from-primary-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                스마트 QR코드
+                연락처 일괄 저장
               </span>
             </h1>
 
             <p className="text-lg md:text-xl text-slate-600 max-w-xl mb-8">
-              식당 메뉴, 부동산 매물, 디지털 명함, 이벤트 안내까지
-              <strong className="text-slate-800"> 업종별 맞춤 QR코드</strong>로 고객 접점을 혁신하세요.
+              엑셀로 받은 <strong className="text-slate-800">수백 명의 고객 연락처</strong>를
+              일일이 입력하지 마세요. QR코드 하나로 한 번에 저장합니다.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4 mb-8">
@@ -153,9 +155,9 @@ export default function HomePage() {
                 무료로 시작하기
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link to="/pricing" className="px-8 py-4 bg-white border-2 border-slate-200 text-slate-700 rounded-xl font-semibold hover:border-primary-300 hover:text-primary-600 transition-all duration-200 flex items-center gap-2">
-                <CreditCard className="w-5 h-5" />
-                요금제 보기
+              <Link to="/insurance" className="px-8 py-4 bg-white border-2 border-slate-200 text-slate-700 rounded-xl font-semibold hover:border-primary-300 hover:text-primary-600 transition-all duration-200 flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                보험 FP 전용
               </Link>
             </div>
 
@@ -170,29 +172,18 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* 이미지 영역 */}
+          {/* 이미지 영역 - 워크플로우 이미지 */}
           <div className="relative">
             <div className="relative z-10">
               <img
-                src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=600&fit=crop"
-                alt="QR코드를 스캔하는 비즈니스 장면"
-                className="rounded-3xl shadow-2xl shadow-slate-300/50"
+                src="/images/hero-workflow.png"
+                alt="엑셀에서 QR코드로, 10시간 작업을 10분으로"
+                className="rounded-3xl shadow-2xl shadow-slate-300/50 w-full"
               />
-              {/* QR 코드 오버레이 */}
-              <div className="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl">
-                <div className="w-24 h-24 bg-gradient-to-br from-primary-500 to-purple-500 rounded-xl flex items-center justify-center">
-                  <QrCode className="w-16 h-16 text-white" />
-                </div>
-              </div>
-              {/* 스캔 수 뱃지 */}
-              <div className="absolute -top-4 -right-4 bg-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-slate-700">실시간 스캔 중</span>
-              </div>
             </div>
             {/* 배경 장식 */}
-            <div className="absolute top-10 right-10 w-72 h-72 bg-primary-200 rounded-full blur-3xl opacity-40 -z-10"></div>
-            <div className="absolute bottom-10 left-10 w-56 h-56 bg-purple-200 rounded-full blur-3xl opacity-40 -z-10"></div>
+            <div className="absolute top-10 right-10 w-72 h-72 bg-emerald-200 rounded-full blur-3xl opacity-40 -z-10"></div>
+            <div className="absolute bottom-10 left-10 w-56 h-56 bg-amber-200 rounded-full blur-3xl opacity-40 -z-10"></div>
           </div>
         </div>
       </section>
