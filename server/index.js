@@ -1239,6 +1239,7 @@ app.get('/api/admin/stats', authenticate, requireAdmin, async (req, res) => {
     const totalUsers = db.data.users.length;
     const totalQRs = db.data.qr_codes.length;
     const totalBatches = db.data.batch_jobs.length;
+    const totalScans = (db.data.qr_scans || []).length;
 
     // 사용자별 QR 생성 통계
     const userStats = {};
@@ -1256,11 +1257,69 @@ app.get('/api/admin/stats', authenticate, requireAdmin, async (req, res) => {
       };
     }).sort((a, b) => b.count - a.count);
 
+    // 일별 스캔 통계 (최근 7일)
+    const dailyScans = {};
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      dailyScans[dateStr] = 0;
+    }
+
+    (db.data.qr_scans || []).forEach(scan => {
+      if (scan.scanned_at) {
+        const dateStr = scan.scanned_at.split('T')[0];
+        if (dailyScans.hasOwnProperty(dateStr)) {
+          dailyScans[dateStr]++;
+        }
+      }
+    });
+
+    const dailyScansArray = Object.entries(dailyScans).map(([date, count]) => ({
+      date,
+      count
+    }));
+
+    // 최근 활동 (QR 생성 + 스캔)
+    const recentActivities = [];
+
+    // QR 생성 활동
+    db.data.qr_codes.slice(-10).reverse().forEach(qr => {
+      const user = db.data.users.find(u => u.id === qr.user_id);
+      recentActivities.push({
+        type: 'qr_created',
+        userName: user?.name || '알 수 없음',
+        qrType: qr.type || 'url',
+        timestamp: qr.created_at,
+        description: `${user?.name || '알 수 없음'}님이 QR코드를 생성했습니다`
+      });
+    });
+
+    // 스캔 활동
+    (db.data.qr_scans || []).slice(-10).reverse().forEach(scan => {
+      const qr = db.data.qr_codes.find(q => q.id === scan.qr_id);
+      const user = qr ? db.data.users.find(u => u.id === qr.user_id) : null;
+      recentActivities.push({
+        type: 'qr_scanned',
+        userName: user?.name || '알 수 없음',
+        qrType: qr?.type || 'url',
+        timestamp: scan.scanned_at,
+        description: `${user?.name || '알 수 없음'}님의 QR코드가 스캔되었습니다`
+      });
+    });
+
+    // 시간순 정렬 (최신순)
+    recentActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
     res.json({
       totalUsers,
       totalQRs,
       totalBatches,
-      userStats: userStatsArray
+      totalScans,
+      userStats: userStatsArray,
+      dailyScans: dailyScansArray,
+      recentActivities: recentActivities.slice(0, 15)
     });
   } catch (error) {
     console.error('관리자 통계 조회 오류:', error);

@@ -6,7 +6,7 @@ import {
   Users, Shield, Trash2, BarChart3, QrCode,
   FolderOpen, AlertCircle, Check, Crown, Gift,
   Ticket, Building2, Calendar, X, Settings, Image,
-  Upload, Loader2, Save, Plus, Minus
+  Upload, Loader2, Save, Plus, Minus, Eye, Activity
 } from 'lucide-react'
 
 const PLANS = {
@@ -362,7 +362,7 @@ export default function AdminPage() {
 
       {/* 통계 카드 */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -389,6 +389,18 @@ export default function AdminPage() {
 
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Eye className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">전체 스캔</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalScans || 0}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                 <FolderOpen className="w-6 h-6 text-purple-600" />
               </div>
@@ -396,6 +408,72 @@ export default function AdminPage() {
                 <p className="text-sm text-gray-500">전체 배치 작업</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalBatches}</p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 일별 스캔 차트 & 최근 활동 */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* 일별 스캔 차트 */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-purple-600" />
+              최근 7일 스캔
+            </h3>
+            <div className="flex items-end justify-between h-40 gap-2">
+              {(stats.dailyScans || []).map((day, index) => {
+                const maxCount = Math.max(...(stats.dailyScans || []).map(d => d.count), 1);
+                const height = (day.count / maxCount) * 100;
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center">
+                    <div className="w-full flex flex-col items-center justify-end h-32">
+                      <span className="text-xs text-gray-600 mb-1">{day.count}</span>
+                      <div
+                        className="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t"
+                        style={{ height: `${Math.max(height, 4)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500 mt-2">
+                      {new Date(day.date).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 최근 활동 */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-green-600" />
+              최근 활동
+            </h3>
+            <div className="space-y-3 max-h-48 overflow-y-auto">
+              {(stats.recentActivities || []).length === 0 ? (
+                <p className="text-gray-500 text-sm">최근 활동이 없습니다.</p>
+              ) : (
+                (stats.recentActivities || []).map((activity, index) => (
+                  <div key={index} className="flex items-center gap-3 text-sm">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      activity.type === 'qr_created' ? 'bg-green-100' : 'bg-blue-100'
+                    }`}>
+                      {activity.type === 'qr_created' ? (
+                        <QrCode className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-blue-600" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-gray-900">{activity.description}</p>
+                      <p className="text-xs text-gray-500">
+                        {activity.timestamp ? new Date(activity.timestamp).toLocaleString('ko-KR') : '-'}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
