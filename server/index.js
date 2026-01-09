@@ -161,11 +161,14 @@ if (!adminExists) {
 }
 
 // 기존 사용자를 관리자로 승격 (이미 가입한 경우)
-const targetAdmin = db.data.users.find(u => u.email === 'mymiryu@naver.com');
-if (targetAdmin && targetAdmin.role !== 'admin') {
-  targetAdmin.role = 'admin';
-  await db.write();
-  console.log('관리자 권한 부여: mymiryu@naver.com');
+const adminEmails = ['mymiryu@naver.com', 'ceohs@kakao.com'];
+for (const email of adminEmails) {
+  const targetAdmin = db.data.users.find(u => u.email === email);
+  if (targetAdmin && targetAdmin.role !== 'admin') {
+    targetAdmin.role = 'admin';
+    await db.write();
+    console.log(`관리자 권한 부여: ${email}`);
+  }
 }
 
 // 인증 미들웨어
