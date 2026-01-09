@@ -113,9 +113,9 @@ export default function AdminPage() {
       setUsers(usersRes.data)
       setStats(statsRes.data)
       setPromoCodes(promoRes.data)
-      // 서버에 저장된 설정이 있으면 직접 사용 (기본값 병합 X)
+      // 서버에 저장된 설정이 있으면 기본값과 병합 (서버 데이터 우선, 누락된 필드는 기본값 유지)
       if (settingsRes.data && Object.keys(settingsRes.data).length > 0) {
-        setSiteSettings(settingsRes.data)
+        setSiteSettings(prev => ({ ...prev, ...settingsRes.data }))
       }
       setAvailableImages(imagesRes.data || [])
     } catch (err) {
