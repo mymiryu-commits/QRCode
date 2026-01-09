@@ -6,7 +6,8 @@ import {
   MessageSquare, MapPin, Calendar, Upload, ArrowRight,
   Sparkles, Shield, Zap, Building2, UtensilsCrossed,
   Home, CreditCard, Users, BarChart3, Award, CheckCircle2,
-  Star, TrendingUp, Globe, Palette, Play
+  Star, TrendingUp, Globe, Palette, Play, Car, Store, CreditCard as CardIcon,
+  Table2, Package, ShoppingBag
 } from 'lucide-react'
 
 // 니치 타겟 산업별 활용 사례 (이미지 포함)
@@ -122,6 +123,50 @@ const clientLogos = [
   { name: 'SK', initial: 'SK' },
   { name: '롯데', initial: 'L' },
   { name: 'CJ', initial: 'CJ' },
+]
+
+// QR 굿즈 상품
+const qrGoods = [
+  {
+    icon: Car,
+    name: '차량용 스티커',
+    description: '주차 연락처를 QR로! 개인정보 노출 없이 연락받기',
+    price: '5,000원~',
+    features: ['내구성 강한 UV 코팅', '방수 처리', '맞춤 디자인 가능'],
+    image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400&h=300&fit=crop',
+    color: 'from-blue-500 to-cyan-500',
+    bgColor: 'bg-blue-50'
+  },
+  {
+    icon: Store,
+    name: '매장용 스탠드',
+    description: '테이블에 세워두는 고급 아크릴 QR 스탠드',
+    price: '15,000원~',
+    features: ['아크릴 프리미엄 소재', '양면 인쇄', '로고 각인 서비스'],
+    image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop',
+    color: 'from-purple-500 to-pink-500',
+    bgColor: 'bg-purple-50'
+  },
+  {
+    icon: CreditCard,
+    name: '명함형 카드',
+    description: 'NFC + QR 스마트 명함으로 프로페셔널하게',
+    price: '3,000원~',
+    features: ['PVC 고급 카드', 'NFC 태그 내장', '100장 단위 주문'],
+    image: 'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&h=300&fit=crop',
+    color: 'from-slate-600 to-slate-800',
+    bgColor: 'bg-slate-50'
+  },
+  {
+    icon: Table2,
+    name: '테이블 텐트',
+    description: '음식점, 카페 테이블용 삼각 스탠드',
+    price: '8,000원~',
+    features: ['양면 인쇄', '접이식 구조', '방수 코팅'],
+    image: 'https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=400&h=300&fit=crop',
+    color: 'from-orange-500 to-red-500',
+    bgColor: 'bg-orange-50'
+  }
 ]
 
 export default function HomePage() {
@@ -487,6 +532,78 @@ export default function HomePage() {
             <Play className="w-5 h-5" />
             지금 시작하기
           </Link>
+        </div>
+      </section>
+
+      {/* QR 굿즈 제작 */}
+      <section>
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 rounded-full text-sm font-medium mb-4">
+            <ShoppingBag className="w-4 h-4" />
+            QR 굿즈 제작
+          </div>
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+            QR코드를 실물로 만나보세요
+          </h2>
+          <p className="text-slate-600 max-w-2xl mx-auto">
+            고급 인쇄로 제작된 QR 스티커와 스탠드로 비즈니스를 더욱 프로페셔널하게
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {qrGoods.map((product) => {
+            const Icon = product.icon
+            return (
+              <div
+                key={product.name}
+                className="group bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+              >
+                <div className="aspect-[4/3] overflow-hidden relative">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className={`absolute top-3 left-3 w-10 h-10 bg-gradient-to-r ${product.color} rounded-xl flex items-center justify-center shadow-lg`}>
+                    <Icon className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+                <div className="p-5">
+                  <h3 className="font-bold text-lg text-slate-900 mb-1">{product.name}</h3>
+                  <p className="text-slate-600 text-sm mb-3">{product.description}</p>
+                  <div className="space-y-1.5 mb-4">
+                    {product.features.map((feature) => (
+                      <div key={feature} className="flex items-center gap-2 text-xs text-slate-500">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                        {feature}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-lg font-bold bg-gradient-to-r ${product.color} bg-clip-text text-transparent`}>
+                      {product.price}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="mt-10 text-center">
+          <div className="inline-flex flex-col sm:flex-row items-center gap-4 p-6 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200">
+            <div className="text-center sm:text-left">
+              <p className="font-semibold text-slate-900">대량 주문 및 맞춤 제작 문의</p>
+              <p className="text-sm text-slate-600">로고, 디자인, 수량에 맞춤 견적을 받아보세요</p>
+            </div>
+            <a
+              href="mailto:mymiryu@gmail.com?subject=QR 굿즈 제작 문의"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+            >
+              <Mail className="w-5 h-5" />
+              견적 문의하기
+            </a>
+          </div>
         </div>
       </section>
 
