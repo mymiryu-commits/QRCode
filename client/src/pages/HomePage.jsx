@@ -483,61 +483,108 @@ export default function HomePage() {
       </section>
 
       {/* 고객센터 안내 - QR코드 포함 */}
-      <section className="bg-slate-50 rounded-3xl p-8 md:p-12">
-        <div className="text-center mb-8">
+      <section className="bg-gradient-to-br from-slate-50 to-purple-50 rounded-3xl p-8 md:p-12">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 text-4xl mb-4">
+            <span>🌸</span>
+            <span>💬</span>
+            <span>🌸</span>
+          </div>
           <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
             도입 상담이 필요하신가요?
           </h2>
           <p className="text-slate-600">QR코드를 스캔하여 바로 연락하세요</p>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
-          {/* 전화 QR */}
-          <div className="text-center">
-            <div className="bg-white p-4 rounded-2xl shadow-lg mb-4 inline-block">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=tel:1588-5617`}
-                alt="전화 QR코드"
-                className="w-32 h-32"
-              />
+        <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12">
+          {/* 전화 QR - 민트/그린 테마 */}
+          <div className="text-center group">
+            <div className="relative">
+              {/* 꽃 데코레이션 */}
+              <div className="absolute -top-3 -left-3 text-2xl animate-bounce" style={{ animationDelay: '0s' }}>🌷</div>
+              <div className="absolute -top-2 -right-3 text-xl animate-bounce" style={{ animationDelay: '0.5s' }}>🌿</div>
+              <div className="absolute -bottom-2 -left-2 text-xl animate-bounce" style={{ animationDelay: '0.3s' }}>🍀</div>
+
+              <div className="bg-white p-5 rounded-3xl shadow-lg mb-4 inline-block border-4 border-emerald-200 group-hover:border-emerald-400 group-hover:shadow-emerald-100 group-hover:shadow-xl transition-all duration-300">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=tel:1588-5617&color=059669&bgcolor=ECFDF5`}
+                  alt="전화 QR코드"
+                  className="w-28 h-28 rounded-lg"
+                />
+              </div>
             </div>
-            <div className="flex items-center justify-center gap-2 text-slate-700 font-medium">
-              <Phone className="w-5 h-5 text-primary-500" />
-              <a href="tel:1588-5617" className="hover:text-primary-600">1588-5617</a>
+            <div className="flex items-center justify-center gap-2 text-emerald-700 font-semibold">
+              <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                <Phone className="w-4 h-4 text-emerald-600" />
+              </div>
+              <a href="tel:1588-5617" className="hover:text-emerald-500 transition-colors">1588-5617</a>
             </div>
-            <p className="text-sm text-slate-500 mt-1">스캔하면 바로 전화</p>
+            <p className="text-sm text-slate-500 mt-2 flex items-center justify-center gap-1">
+              <span>📞</span> 스캔하면 바로 전화
+            </p>
           </div>
 
-          {/* 이메일 QR */}
-          <div className="text-center">
-            <div className="bg-white p-4 rounded-2xl shadow-lg mb-4 inline-block">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=mailto:mymiryu@gmail.com`}
-                alt="이메일 QR코드"
-                className="w-32 h-32"
-              />
+          {/* 이메일 QR - 블루 테마 */}
+          <div className="text-center group">
+            <div className="relative">
+              {/* 새/하트 데코레이션 */}
+              <div className="absolute -top-3 -left-2 text-2xl animate-bounce" style={{ animationDelay: '0.2s' }}>🕊️</div>
+              <div className="absolute -top-2 -right-3 text-xl animate-bounce" style={{ animationDelay: '0.7s' }}>💙</div>
+              <div className="absolute -bottom-2 -right-2 text-xl animate-bounce" style={{ animationDelay: '0.4s' }}>✨</div>
+
+              <div className="bg-white p-5 rounded-3xl shadow-lg mb-4 inline-block border-4 border-blue-200 group-hover:border-blue-400 group-hover:shadow-blue-100 group-hover:shadow-xl transition-all duration-300">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=mailto:mymiryu@gmail.com&color=2563EB&bgcolor=EFF6FF`}
+                  alt="이메일 QR코드"
+                  className="w-28 h-28 rounded-lg"
+                />
+              </div>
             </div>
-            <div className="flex items-center justify-center gap-2 text-slate-700 font-medium">
-              <Mail className="w-5 h-5 text-primary-500" />
-              <a href="mailto:mymiryu@gmail.com" className="hover:text-primary-600">mymiryu@gmail.com</a>
+            <div className="flex items-center justify-center gap-2 text-blue-700 font-semibold">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <Mail className="w-4 h-4 text-blue-600" />
+              </div>
+              <a href="mailto:mymiryu@gmail.com" className="hover:text-blue-500 transition-colors">mymiryu@gmail.com</a>
             </div>
-            <p className="text-sm text-slate-500 mt-1">스캔하면 메일 작성</p>
+            <p className="text-sm text-slate-500 mt-2 flex items-center justify-center gap-1">
+              <span>💌</span> 스캔하면 메일 작성
+            </p>
           </div>
 
-          {/* 연락처 저장 QR */}
-          <div className="text-center">
-            <div className="bg-white p-4 rounded-2xl shadow-lg mb-4 inline-block">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('BEGIN:VCARD\nVERSION:3.0\nFN:PlanX QR 고객센터\nTEL:1588-5617\nEMAIL:mymiryu@gmail.com\nURL:https://30daysliving.com\nEND:VCARD')}`}
-                alt="연락처 저장 QR코드"
-                className="w-32 h-32"
-              />
+          {/* 연락처 저장 QR - 퍼플 테마 */}
+          <div className="text-center group">
+            <div className="relative">
+              {/* 별/꽃 데코레이션 */}
+              <div className="absolute -top-3 -right-2 text-2xl animate-bounce" style={{ animationDelay: '0.1s' }}>🌟</div>
+              <div className="absolute -top-2 -left-3 text-xl animate-bounce" style={{ animationDelay: '0.6s' }}>💜</div>
+              <div className="absolute -bottom-2 -left-1 text-xl animate-bounce" style={{ animationDelay: '0.8s' }}>🦋</div>
+
+              <div className="bg-white p-5 rounded-3xl shadow-lg mb-4 inline-block border-4 border-purple-200 group-hover:border-purple-400 group-hover:shadow-purple-100 group-hover:shadow-xl transition-all duration-300">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('BEGIN:VCARD\nVERSION:3.0\nFN:PlanX QR 고객센터\nTEL:1588-5617\nEMAIL:mymiryu@gmail.com\nURL:https://30daysliving.com\nEND:VCARD')}&color=7C3AED&bgcolor=FAF5FF`}
+                  alt="연락처 저장 QR코드"
+                  className="w-28 h-28 rounded-lg"
+                />
+              </div>
             </div>
-            <div className="flex items-center justify-center gap-2 text-slate-700 font-medium">
-              <User className="w-5 h-5 text-primary-500" />
+            <div className="flex items-center justify-center gap-2 text-purple-700 font-semibold">
+              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                <User className="w-4 h-4 text-purple-600" />
+              </div>
               연락처 저장
             </div>
-            <p className="text-sm text-slate-500 mt-1">스캔하면 연락처 저장</p>
+            <p className="text-sm text-slate-500 mt-2 flex items-center justify-center gap-1">
+              <span>📱</span> 스캔하면 연락처 저장
+            </p>
+          </div>
+        </div>
+
+        {/* 하단 귀여운 안내 */}
+        <div className="mt-10 text-center">
+          <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur px-6 py-3 rounded-full shadow-sm">
+            <span className="text-2xl">🐰</span>
+            <span className="text-slate-600 text-sm">언제든 편하게 문의해 주세요!</span>
+            <span className="text-2xl">🐻</span>
           </div>
         </div>
       </section>
