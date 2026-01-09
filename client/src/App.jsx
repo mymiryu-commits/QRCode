@@ -13,6 +13,7 @@ import PricingPage from './pages/PricingPage'
 import PaymentSuccessPage from './pages/PaymentSuccessPage'
 import PaymentFailPage from './pages/PaymentFailPage'
 import InsuranceFPPage from './pages/InsuranceFPPage'
+import SharePage from './pages/SharePage'
 
 // 로그인 필요한 페이지 보호
 function ProtectedRoute({ children }) {
@@ -109,6 +110,7 @@ function AppRoutes() {
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/insurance" element={<InsuranceFPPage />} />
         <Route path="/fp" element={<InsuranceFPPage />} />
+        <Route path="/share/:batchId" element={<SharePage />} />
         <Route
           path="/payment/success"
           element={

@@ -2207,6 +2207,121 @@ app.post('/api/qr/:id/add-logo', authenticate, checkPremiumFeature('logo_insert'
   }
 });
 
+// ========== 공유 API (로그인 불필요 - 공개 접근) ==========
+
+// 배치 공유 정보 조회 (공개)
+app.get('/api/share/:batchId', async (req, res) => {
+  try {
+    const { batchId } = req.params;
+    await db.read();
+
+    const batch = db.data.batch_jobs.find(b => b.id === batchId);
+    if (!batch) {
+      return res.status(404).json({ error: '공유된 연락처를 찾을 수 없습니다.' });
+    }
+
+    // vCard 타입만 지원
+    if (batch.type !== 'vcard') {
+      return res.status(400).json({ error: '연락처 타입만 공유 가능합니다.' });
+    }
+
+    const items = db.data.qr_codes.filter(qr => qr.batch_id === batchId);
+
+    // 소유자 정보
+    const owner = db.data.users.find(u => u.id === batch.user_id);
+
+    // 미리보기 (최대 5개)
+    const preview = items.slice(0, 5).map(item => {
+      const data = item.data || {};
+      return {
+        name: data.name || data.이름 || '이름없음',
+        phone: data.tel || data.phone || data.전화번호 || '',
+        company: data.org || data.company || data.회사 || ''
+      };
+    });
+
+    res.json({
+      batchId: batch.id,
+      totalCount: items.length,
+      ownerName: owner?.name || '',
+      preview,
+      createdAt: batch.created_at
+    });
+  } catch (error) {
+    console.error('공유 정보 조회 오류:', error);
+    res.status(500).json({ error: '정보를 불러오는 중 오류가 발생했습니다.' });
+  }
+});
+
+// 배치 VCF 다운로드 (공개)
+app.get('/api/share/:batchId/vcf', async (req, res) => {
+  try {
+    const { batchId } = req.params;
+    await db.read();
+
+    const batch = db.data.batch_jobs.find(b => b.id === batchId);
+    if (!batch) {
+      return res.status(404).json({ error: '연락처를 찾을 수 없습니다.' });
+    }
+
+    if (batch.type !== 'vcard') {
+      return res.status(400).json({ error: '연락처 타입만 다운로드 가능합니다.' });
+    }
+
+    const items = db.data.qr_codes.filter(qr => qr.batch_id === batchId);
+
+    if (items.length === 0) {
+      return res.status(404).json({ error: '연락처가 없습니다.' });
+    }
+
+    // 모든 연락처를 하나의 VCF 파일로 결합
+    let vcfContent = '';
+
+    for (const item of items) {
+      const data = item.data || {};
+
+      let vcard = 'BEGIN:VCARD\r\n';
+      vcard += 'VERSION:3.0\r\n';
+
+      const name = data.name || data.이름 || '이름없음';
+      vcard += `FN:${name}\r\n`;
+      vcard += `N:${name};;;;\r\n`;
+
+      const tel = data.tel || data.phone || data.전화번호 || '';
+      if (tel) vcard += `TEL;TYPE=CELL:${tel}\r\n`;
+
+      const email = data.email || data.이메일 || '';
+      if (email) vcard += `EMAIL:${email}\r\n`;
+
+      const org = data.org || data.company || data.회사 || '';
+      if (org) vcard += `ORG:${org}\r\n`;
+
+      const title = data.title || data.직책 || '';
+      if (title) vcard += `TITLE:${title}\r\n`;
+
+      const addr = data.address || data.주소 || '';
+      if (addr) vcard += `ADR;TYPE=WORK:;;${addr};;;;\r\n`;
+
+      const note = data.note || data.메모 || '';
+      if (note) vcard += `NOTE:${note}\r\n`;
+
+      vcard += 'END:VCARD\r\n';
+      vcfContent += vcard;
+    }
+
+    const fileName = `연락처_${items.length}명.vcf`;
+    const encodedFileName = encodeURIComponent(fileName);
+
+    res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`);
+    res.send(vcfContent);
+
+  } catch (error) {
+    console.error('공유 VCF 다운로드 오류:', error);
+    res.status(500).json({ error: 'VCF 파일 생성 중 오류가 발생했습니다.' });
+  }
+});
+
 // 프로덕션에서 React 빌드 파일 서빙
 const clientDistPath = path.join(__dirname, '../client/dist');
 if (fs.existsSync(clientDistPath)) {

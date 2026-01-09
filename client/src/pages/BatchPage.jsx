@@ -6,7 +6,7 @@ import {
   Upload, FileSpreadsheet, Download, Loader2, Check,
   User, Wifi, Link as LinkIcon, Mail, AlertCircle,
   Package, X, FileDown, Phone, MessageSquare, Info,
-  Users, Smartphone
+  Users, Smartphone, Share2, QrCode, Copy, ExternalLink
 } from 'lucide-react'
 
 const batchTypes = [
@@ -24,7 +24,33 @@ export default function BatchPage() {
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState(null)
   const [error, setError] = useState(null)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [copied, setCopied] = useState(false)
   const fileInputRef = useRef(null)
+
+  // 공유 URL 생성
+  const getShareUrl = () => {
+    if (!results?.batchId) return ''
+    return `${window.location.origin}/share/${results.batchId}`
+  }
+
+  // 공유 QR 이미지 URL
+  const getShareQrUrl = () => {
+    const shareUrl = getShareUrl()
+    if (!shareUrl) return ''
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(shareUrl)}&color=6366F1`
+  }
+
+  // 링크 복사
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getShareUrl())
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('복사 실패:', err)
+    }
+  }
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
@@ -348,24 +374,98 @@ export default function BatchPage() {
               </div>
             </div>
 
-            {/* vCard 일괄 저장 안내 */}
+            {/* 통합 QR 공유 - 핵심 기능 */}
             {selectedType === 'vcard' && (
-              <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Users className="w-5 h-5 text-green-600" />
+              <div className="mb-6 p-6 bg-gradient-to-r from-primary-50 via-purple-50 to-pink-50 border-2 border-primary-200 rounded-2xl">
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  {/* QR 코드 */}
+                  <div className="flex-shrink-0">
+                    <div className="bg-white p-3 rounded-2xl shadow-lg">
+                      <img
+                        src={getShareQrUrl()}
+                        alt="공유 QR코드"
+                        className="w-40 h-40"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-green-900 mb-1">
-                      연락처 일괄 저장 기능
-                    </h3>
-                    <p className="text-sm text-green-700 mb-2">
-                      "연락처 일괄저장 (VCF)" 버튼을 클릭하면 <strong>{results.totalCount}명의 연락처</strong>를
-                      하나의 파일로 다운로드 받을 수 있습니다.
+
+                  {/* 설명 */}
+                  <div className="flex-1 text-center md:text-left">
+                    <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                      <QrCode className="w-6 h-6 text-primary-600" />
+                      <h3 className="text-xl font-bold text-slate-900">
+                        통합 QR코드
+                      </h3>
+                    </div>
+                    <p className="text-slate-600 mb-4">
+                      이 QR코드 하나로 <strong className="text-primary-600">{results.totalCount}명의 연락처</strong>를
+                      누구나 한 번에 저장할 수 있습니다.
                     </p>
-                    <p className="text-xs text-green-600">
-                      다운로드 받은 .vcf 파일을 스마트폰에서 열면 모든 연락처가 한 번에 저장됩니다.
-                    </p>
+
+                    {/* 공유 URL */}
+                    <div className="bg-white rounded-xl p-3 mb-4 flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={getShareUrl()}
+                        readOnly
+                        className="flex-1 bg-transparent text-sm text-slate-600 outline-none truncate"
+                      />
+                      <button
+                        onClick={copyShareLink}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-all ${
+                          copied
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+                        }`}
+                      >
+                        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copied ? '복사됨!' : '복사'}
+                      </button>
+                    </div>
+
+                    {/* 버튼들 */}
+                    <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                      <a
+                        href={getShareUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-primary flex items-center gap-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        공유 페이지 열기
+                      </a>
+                      <button
+                        onClick={() => {
+                          const link = document.createElement('a')
+                          link.href = getShareQrUrl()
+                          link.download = `연락처_${results.totalCount}명_QR.png`
+                          link.click()
+                        }}
+                        className="btn-secondary flex items-center gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        QR 이미지 저장
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 사용 방법 */}
+                <div className="mt-6 pt-4 border-t border-primary-200">
+                  <p className="text-sm font-medium text-slate-700 mb-2">📱 사용 방법</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-slate-600">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                      <span>QR코드를 고객에게 공유</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                      <span>고객이 QR 스캔</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                      <span>연락처 전체 일괄 저장!</span>
+                    </div>
                   </div>
                 </div>
               </div>
