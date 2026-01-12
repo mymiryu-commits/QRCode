@@ -82,6 +82,21 @@ export default function AdminPage() {
       { question: '스캔 분석이란?', answer: 'QR코드가 언제, 어디서, 어떤 기기로 스캔되었는지 통계를 제공합니다. 마케팅 효과를 측정하는데 유용합니다.' },
       { question: '언제든 플랜을 변경할 수 있나요?', answer: '네, 언제든 상위 플랜으로 업그레이드할 수 있습니다. 남은 기간에 대해 일할 계산됩니다.' },
       { question: '환불 정책은?', answer: '결제 후 7일 이내 환불 요청 시 전액 환불됩니다. 7일 이후에는 남은 기간에 대해 일할 환불됩니다.' }
+    ],
+    // 기업 로고
+    clientLogos: [
+      { name: '삼성', initial: 'S', image: '' },
+      { name: 'LG', initial: 'LG', image: '' },
+      { name: '현대', initial: 'H', image: '' },
+      { name: 'SK', initial: 'SK', image: '' },
+      { name: '롯데', initial: 'L', image: '' },
+      { name: 'CJ', initial: 'CJ', image: '' }
+    ],
+    // 3단계 사용법
+    howToSteps: [
+      { step: '01', title: 'QR 유형 선택', desc: 'URL, 연락처, WiFi 등 원하는 유형을 선택하세요', image: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=400&h=300&fit=crop' },
+      { step: '02', title: '정보 입력', desc: 'QR코드에 담을 정보를 간단히 입력하세요', image: 'https://images.unsplash.com/photo-1531538606174-0f90ff5dce83?w=400&h=300&fit=crop' },
+      { step: '03', title: '다운로드', desc: '생성된 QR코드를 고해상도로 다운로드하세요', image: 'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&h=300&fit=crop' }
     ]
   })
   const [availableImages, setAvailableImages] = useState([])
@@ -191,6 +206,14 @@ export default function AdminPage() {
         const newFeatures = [...siteSettings.premiumFeatures]
         newFeatures[index] = { ...newFeatures[index], image: imageUrl }
         setSiteSettings(prev => ({ ...prev, premiumFeatures: newFeatures }))
+      } else if (sectionType === 'howToSteps') {
+        const newSteps = [...siteSettings.howToSteps]
+        newSteps[index] = { ...newSteps[index], image: imageUrl }
+        setSiteSettings(prev => ({ ...prev, howToSteps: newSteps }))
+      } else if (sectionType === 'clientLogos') {
+        const newLogos = [...siteSettings.clientLogos]
+        newLogos[index] = { ...newLogos[index], image: imageUrl }
+        setSiteSettings(prev => ({ ...prev, clientLogos: newLogos }))
       }
 
       // 이미지 목록 새로고침
@@ -218,6 +241,14 @@ export default function AdminPage() {
       const newFeatures = [...siteSettings.premiumFeatures]
       newFeatures[index] = { ...newFeatures[index], image: imageUrl }
       setSiteSettings(prev => ({ ...prev, premiumFeatures: newFeatures }))
+    } else if (section === 'howToSteps') {
+      const newSteps = [...siteSettings.howToSteps]
+      newSteps[index] = { ...newSteps[index], image: imageUrl }
+      setSiteSettings(prev => ({ ...prev, howToSteps: newSteps }))
+    } else if (section === 'clientLogos') {
+      const newLogos = [...siteSettings.clientLogos]
+      newLogos[index] = { ...newLogos[index], image: imageUrl }
+      setSiteSettings(prev => ({ ...prev, clientLogos: newLogos }))
     }
     setImageSelector({ open: false, section: null, index: null })
   }
@@ -236,6 +267,13 @@ export default function AdminPage() {
     } else if (sectionType === 'faq') {
       const newItem = { question: '새 질문', answer: '답변을 입력하세요.' }
       setSiteSettings(prev => ({ ...prev, faq: [...(prev.faq || []), newItem] }))
+    } else if (sectionType === 'howToSteps') {
+      const currentLength = (siteSettings.howToSteps || []).length
+      const newItem = { step: String(currentLength + 1).padStart(2, '0'), title: '새 단계', desc: '설명을 입력하세요', image: '' }
+      setSiteSettings(prev => ({ ...prev, howToSteps: [...(prev.howToSteps || []), newItem] }))
+    } else if (sectionType === 'clientLogos') {
+      const newItem = { name: '새 기업', initial: 'N', image: '' }
+      setSiteSettings(prev => ({ ...prev, clientLogos: [...(prev.clientLogos || []), newItem] }))
     }
   }
 
@@ -262,6 +300,16 @@ export default function AdminPage() {
       setSiteSettings(prev => ({
         ...prev,
         faq: prev.faq.filter((_, i) => i !== index)
+      }))
+    } else if (sectionType === 'howToSteps') {
+      setSiteSettings(prev => ({
+        ...prev,
+        howToSteps: prev.howToSteps.filter((_, i) => i !== index)
+      }))
+    } else if (sectionType === 'clientLogos') {
+      setSiteSettings(prev => ({
+        ...prev,
+        clientLogos: prev.clientLogos.filter((_, i) => i !== index)
       }))
     }
     // 이미지 선택기 초기화
@@ -1320,6 +1368,276 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* 3단계 사용법 설정 */}
+              <div className="bg-orange-50 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium text-gray-900">3단계 사용법 (QR코드를 실물로 만나보세요 섹션)</h4>
+                  <button
+                    type="button"
+                    onClick={() => handleAddSectionItem('howToSteps')}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    단계 추가
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {(siteSettings.howToSteps || []).map((step, index) => (
+                    <div key={index} className="bg-white p-4 rounded-lg border relative">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSectionItem('howToSteps', index)}
+                        className="absolute top-2 right-2 p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                        title="삭제"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <div className="flex items-center gap-4 mb-3 pr-8">
+                        <span className="text-sm font-bold text-orange-600">#{step.step || String(index + 1).padStart(2, '0')}</span>
+                        <input
+                          type="text"
+                          value={step.title}
+                          onChange={(e) => {
+                            const newSteps = [...siteSettings.howToSteps]
+                            newSteps[index] = { ...newSteps[index], title: e.target.value }
+                            setSiteSettings(prev => ({ ...prev, howToSteps: newSteps }))
+                          }}
+                          placeholder="단계 제목"
+                          className="flex-1 px-3 py-1.5 border rounded text-sm"
+                        />
+                      </div>
+                      <textarea
+                        value={step.desc}
+                        onChange={(e) => {
+                          const newSteps = [...siteSettings.howToSteps]
+                          newSteps[index] = { ...newSteps[index], desc: e.target.value }
+                          setSiteSettings(prev => ({ ...prev, howToSteps: newSteps }))
+                        }}
+                        placeholder="설명"
+                        rows={2}
+                        className="w-full px-3 py-1.5 border rounded text-sm"
+                      />
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <label className="flex items-center gap-2 px-3 py-1.5 bg-orange-100 text-orange-700 rounded cursor-pointer hover:bg-orange-200 transition-colors text-sm">
+                          <Upload className="w-4 h-4" />
+                          업로드
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleSectionImageUpload(e, 'howToSteps', index)}
+                            className="hidden"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setImageSelector(prev =>
+                            prev.open && prev.section === 'howToSteps' && prev.index === index
+                              ? { open: false, section: null, index: null }
+                              : { open: true, section: 'howToSteps', index }
+                          )}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-white border border-orange-300 text-orange-700 rounded hover:bg-orange-50 transition-colors text-sm"
+                        >
+                          <Image className="w-4 h-4" />
+                          기존 이미지 선택
+                        </button>
+                        {step.image && (
+                          <img src={step.image} alt={step.title} className="h-16 rounded object-cover" />
+                        )}
+                      </div>
+                      {imageSelector.open && imageSelector.section === 'howToSteps' && imageSelector.index === index && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                          <p className="text-xs text-gray-500 mb-2">이미지 선택:</p>
+                          <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
+                            {availableImages.map((img, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleSelectExistingImage(img.url)}
+                                className="relative rounded overflow-hidden border-2 border-transparent hover:border-orange-500 transition-colors"
+                              >
+                                <img src={img.url} alt={img.name} className="w-full h-16 object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 기업 로고 설정 */}
+              <div className="bg-slate-50 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium text-gray-900">기업 로고 (국내 주요 기업들이 선택한 QR코드 솔루션)</h4>
+                  <button
+                    type="button"
+                    onClick={() => handleAddSectionItem('clientLogos')}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    로고 추가
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {(siteSettings.clientLogos || []).map((logo, index) => (
+                    <div key={index} className="bg-white p-4 rounded-lg border relative">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSectionItem('clientLogos', index)}
+                        className="absolute top-2 right-2 p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                        title="삭제"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <div className="flex items-center gap-3 mb-3 pr-8">
+                        <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 font-bold overflow-hidden flex-shrink-0">
+                          {logo.image ? (
+                            <img src={logo.image} alt={logo.name} className="w-full h-full object-contain p-1" />
+                          ) : (
+                            logo.initial
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <input
+                            type="text"
+                            value={logo.name}
+                            onChange={(e) => {
+                              const newLogos = [...siteSettings.clientLogos]
+                              newLogos[index] = { ...newLogos[index], name: e.target.value }
+                              setSiteSettings(prev => ({ ...prev, clientLogos: newLogos }))
+                            }}
+                            placeholder="기업명"
+                            className="w-full px-2 py-1 border rounded text-sm"
+                          />
+                          <input
+                            type="text"
+                            value={logo.initial}
+                            onChange={(e) => {
+                              const newLogos = [...siteSettings.clientLogos]
+                              newLogos[index] = { ...newLogos[index], initial: e.target.value }
+                              setSiteSettings(prev => ({ ...prev, clientLogos: newLogos }))
+                            }}
+                            placeholder="이니셜 (이미지 없을 때 표시)"
+                            className="w-full px-2 py-1 border rounded text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-700 rounded cursor-pointer hover:bg-slate-200 transition-colors text-xs">
+                          <Upload className="w-3 h-3" />
+                          로고 업로드
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleSectionImageUpload(e, 'clientLogos', index)}
+                            className="hidden"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setImageSelector(prev =>
+                            prev.open && prev.section === 'clientLogos' && prev.index === index
+                              ? { open: false, section: null, index: null }
+                              : { open: true, section: 'clientLogos', index }
+                          )}
+                          className="flex items-center gap-1 px-2 py-1 bg-white border border-slate-300 text-slate-700 rounded hover:bg-slate-50 transition-colors text-xs"
+                        >
+                          <Image className="w-3 h-3" />
+                          선택
+                        </button>
+                        {logo.image && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newLogos = [...siteSettings.clientLogos]
+                              newLogos[index] = { ...newLogos[index], image: '' }
+                              setSiteSettings(prev => ({ ...prev, clientLogos: newLogos }))
+                            }}
+                            className="text-xs text-red-500 hover:text-red-700"
+                          >
+                            이미지 제거
+                          </button>
+                        )}
+                      </div>
+                      {imageSelector.open && imageSelector.section === 'clientLogos' && imageSelector.index === index && (
+                        <div className="mt-3 p-2 bg-gray-50 rounded-lg">
+                          <p className="text-xs text-gray-500 mb-2">이미지 선택:</p>
+                          <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
+                            {availableImages.map((img, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => handleSelectExistingImage(img.url)}
+                                className="relative rounded overflow-hidden border-2 border-transparent hover:border-slate-500 transition-colors"
+                              >
+                                <img src={img.url} alt={img.name} className="w-full h-12 object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 이미지 라이브러리 */}
+              <div className="bg-indigo-50 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium text-gray-900">이미지 라이브러리</h4>
+                  <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition-colors text-sm">
+                    <Plus className="w-4 h-4" />
+                    새 이미지 추가
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        const formData = new FormData()
+                        formData.append('image', file)
+                        try {
+                          setSettingsLoading(true)
+                          await axios.post('/api/admin/upload-image', formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' }
+                          })
+                          const imagesRes = await axios.get('/api/admin/images')
+                          setAvailableImages(imagesRes.data || [])
+                        } catch (err) {
+                          alert(err.response?.data?.error || '이미지 업로드에 실패했습니다.')
+                        } finally {
+                          setSettingsLoading(false)
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">업로드된 이미지를 다른 섹션에서 선택하여 사용할 수 있습니다.</p>
+                {availableImages.length > 0 ? (
+                  <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 max-h-60 overflow-y-auto">
+                    {availableImages.map((img, idx) => (
+                      <div
+                        key={idx}
+                        className="relative group rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-300 transition-all"
+                      >
+                        <img
+                          src={img.url}
+                          alt={img.name}
+                          className="w-full h-20 object-cover"
+                        />
+                        <span className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-1 truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                          {img.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-400 text-sm">아직 업로드된 이미지가 없습니다.</p>
+                )}
               </div>
 
               {/* 미리보기 */}

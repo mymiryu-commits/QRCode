@@ -115,14 +115,21 @@ const testimonials = [
   },
 ]
 
-// 로고 클라이언트 (가상)
-const clientLogos = [
-  { name: '삼성', initial: 'S' },
-  { name: 'LG', initial: 'LG' },
-  { name: '현대', initial: 'H' },
-  { name: 'SK', initial: 'SK' },
-  { name: '롯데', initial: 'L' },
-  { name: 'CJ', initial: 'CJ' },
+// 로고 클라이언트 (기본값)
+const defaultClientLogos = [
+  { name: '삼성', initial: 'S', image: '' },
+  { name: 'LG', initial: 'LG', image: '' },
+  { name: '현대', initial: 'H', image: '' },
+  { name: 'SK', initial: 'SK', image: '' },
+  { name: '롯데', initial: 'L', image: '' },
+  { name: 'CJ', initial: 'CJ', image: '' },
+]
+
+// 3단계 사용법 (기본값)
+const defaultHowToSteps = [
+  { step: '01', title: 'QR 유형 선택', desc: 'URL, 연락처, WiFi 등 원하는 유형을 선택하세요', image: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=400&h=300&fit=crop' },
+  { step: '02', title: '정보 입력', desc: 'QR코드에 담을 정보를 간단히 입력하세요', image: 'https://images.unsplash.com/photo-1531538606174-0f90ff5dce83?w=400&h=300&fit=crop' },
+  { step: '03', title: '다운로드', desc: '생성된 QR코드를 고해상도로 다운로드하세요', image: 'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&h=300&fit=crop' },
 ]
 
 // QR 굿즈 상품
@@ -187,7 +194,11 @@ export default function HomePage() {
     useCases: null,
     testimonials: null,
     premiumFeatures: null,
-    characterQR: null
+    characterQR: null,
+    // 기업 로고
+    clientLogos: null,
+    // 3단계 사용법
+    howToSteps: null
   })
 
   // 동적 섹션 데이터 (설정에서 가져오거나 기본값 사용)
@@ -200,6 +211,8 @@ export default function HomePage() {
     contactName: 'PlanX QR 고객센터',
     website: 'https://30daysliving.com'
   }
+  const displayClientLogos = settings.clientLogos || defaultClientLogos
+  const displayHowToSteps = settings.howToSteps || defaultHowToSteps
 
   // 설정 로드
   useEffect(() => {
@@ -220,9 +233,9 @@ export default function HomePage() {
     <div className="space-y-24 animate-fade-in">
       {/* 히어로 섹션 - 워크플로우 이미지 */}
       <section className="relative overflow-hidden">
-        <div className="grid lg:grid-cols-2 gap-12 items-center py-12">
+        <div className="grid lg:grid-cols-2 gap-12 items-stretch py-12">
           {/* 텍스트 영역 */}
-          <div className="text-center lg:text-left">
+          <div className="text-center lg:text-left flex flex-col justify-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary-500/10 to-amber-500/10 border border-primary-200 text-primary-700 rounded-full text-sm font-medium mb-6">
               <Award className="w-4 h-4" />
               {settings.heroBadge}
@@ -312,9 +325,13 @@ export default function HomePage() {
       <section className="py-8 border-y border-amber-200">
         <p className="text-center text-sm text-stone-500 mb-6">국내 주요 기업들이 선택한 QR코드 솔루션</p>
         <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
-          {clientLogos.map((logo) => (
-            <div key={logo.name} className="w-16 h-16 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 font-bold text-lg hover:bg-amber-200 transition-colors">
-              {logo.initial}
+          {displayClientLogos.map((logo) => (
+            <div key={logo.name} className="w-16 h-16 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 font-bold text-lg hover:bg-amber-200 transition-colors overflow-hidden">
+              {logo.image ? (
+                <img src={logo.image} alt={logo.name} className="w-full h-full object-contain p-2" />
+              ) : (
+                logo.initial
+              )}
             </div>
           ))}
         </div>
@@ -502,12 +519,8 @@ export default function HomePage() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
-          {[
-            { step: '01', title: 'QR 유형 선택', desc: 'URL, 연락처, WiFi 등 원하는 유형을 선택하세요', image: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=400&h=300&fit=crop' },
-            { step: '02', title: '정보 입력', desc: 'QR코드에 담을 정보를 간단히 입력하세요', image: 'https://images.unsplash.com/photo-1531538606174-0f90ff5dce83?w=400&h=300&fit=crop' },
-            { step: '03', title: '다운로드', desc: '생성된 QR코드를 고해상도로 다운로드하세요', image: 'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400&h=300&fit=crop' },
-          ].map((item) => (
-            <div key={item.step} className="text-center">
+          {displayHowToSteps.map((item, index) => (
+            <div key={item.step || index} className="text-center">
               <div className="relative mb-6">
                 <img
                   src={item.image}
@@ -515,7 +528,7 @@ export default function HomePage() {
                   className="rounded-2xl shadow-lg w-full aspect-[4/3] object-cover"
                 />
                 <div className="absolute -top-3 -left-3 w-12 h-12 bg-gradient-to-br from-primary-500 to-amber-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
-                  {item.step}
+                  {item.step || String(index + 1).padStart(2, '0')}
                 </div>
               </div>
               <h3 className="font-bold text-xl text-stone-900 mb-2">{item.title}</h3>
