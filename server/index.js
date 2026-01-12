@@ -66,16 +66,23 @@ const PLANS = {
   }
 };
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// 영구 저장소 경로 설정 (Railway Volume 지원)
+const PERSISTENT_PATH = process.env.PERSISTENT_PATH || path.join(__dirname, '..');
+const dataDir = path.join(PERSISTENT_PATH, 'data');
+const uploadsDir = path.join(PERSISTENT_PATH, 'uploads');
 
-// Database 설정 (LowDB - JSON 파일 기반)
-const dataDir = path.join(__dirname, '../data');
+// 디렉토리 생성
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use('/uploads', express.static(uploadsDir));
 
 const defaultData = {
   users: [],
@@ -223,11 +230,10 @@ const optionalAuth = async (req, res, next) => {
 // Multer 설정
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
     }
-    cb(null, uploadDir);
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}-${file.originalname}`);
@@ -2392,7 +2398,6 @@ app.post('/api/admin/upload-image', authenticate, requireAdmin, upload.single('i
 app.get('/api/admin/images', authenticate, requireAdmin, async (req, res) => {
   try {
     const imagesDir = path.join(__dirname, '../client/public/images');
-    const uploadsDir = path.join(__dirname, 'uploads');
 
     const images = [];
 
